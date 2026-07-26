@@ -4,6 +4,7 @@
 #include <yaml-cpp/yaml.h>
 
 struct DetectorConfig {
+    std::string type;
     std::string model_path;
     int input_width;
     int input_height;

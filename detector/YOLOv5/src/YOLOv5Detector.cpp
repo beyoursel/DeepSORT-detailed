@@ -4,10 +4,13 @@
     @Date        : 2022-09-23 02:52:41
 */
 #include <YOLOv5Detector.h>
+#include <detector_utils.h>
 #include <AppConfig.h>
 #include <iostream>
 
-void YOLOv5Detector::init()
+namespace detector {
+
+bool YOLOv5Detector::init()
 {
     const DetectorConfig& cfg = AppConfig::getInstance()->detector;
 
@@ -15,111 +18,90 @@ void YOLOv5Detector::init()
     nms_threshold_ = cfg.nms_threshold;
     model_input_width_ = cfg.input_width;
     model_input_height_ = cfg.input_height;
+    model_path_ = cfg.model_path;
+    classes_path_ = AppConfig::getInstance()->dataset.coco_labels;
 
-    this->net = cv::dnn::readNetFromONNX(cfg.model_path);
+    net_ = cv::dnn::readNetFromONNX(model_path_);
+    load_classes();
 
-    std::string file = AppConfig::getInstance()->dataset.coco_labels;
-    std::ifstream ifs(file);
-    if (!ifs.is_open())
-        CV_Error(cv::Error::StsError, "File " + file + " not found");
+    return true;
+}
+
+void YOLOv5Detector::load_classes()
+{
+    classes_.clear();
+    std::ifstream ifs(classes_path_);
+    if (!ifs.is_open()) {
+        CV_Error(cv::Error::StsError, "File " + classes_path_ + " not found");
+    }
     std::string line;
-    while (std::getline(ifs, line))
-    {
+    while (std::getline(ifs, line)) {
         classes_.push_back(line);
     }
 }
 
-void YOLOv5Detector::detect(cv::Mat & frame, std::vector<detect_result> &results)
+void YOLOv5Detector::detect(cv::Mat& frame, std::vector<detect_result>& results)
 {
+    results.clear();
 
-    int w = frame.cols;
-    int h = frame.rows;
-    int _max = std::max(h, w);
-    cv::Mat image = cv::Mat::zeros(cv::Size(_max, _max), CV_8UC3);
-    cv::Rect roi(0, 0, w, h);
-    frame.copyTo(image(roi));
+    ScaleInfo scale_info;
+    cv::Mat letterboxed = letterbox(frame, model_input_width_, model_input_height_, scale_info);
 
-
-    float x_factor = static_cast<float>(image.cols) / model_input_width_;
-    float y_factor = static_cast<float>(image.rows) / model_input_height_;
-
-
-    std::cout<<x_factor<<std::endl;
-    std::cout<<y_factor<<std::endl;
-
-    cv::Mat blob = cv::dnn::blobFromImage(image, 1 / 255.0, cv::Size(model_input_width_, model_input_height_), cv::Scalar(0, 0, 0), true, false);
-    this->net.setInput(blob);
-    cv::Mat preds = this->net.forward("output");//outputname
-
+    cv::Mat blob = cv::dnn::blobFromImage(letterboxed, 1 / 255.0,
+                                          cv::Size(model_input_width_, model_input_height_),
+                                          cv::Scalar(0, 0, 0), true, false);
+    net_.setInput(blob);
+    cv::Mat preds = net_.forward("output");
 
     cv::Mat det_output(preds.size[1], preds.size[2], CV_32F, preds.ptr<float>());
+
+    int num_classes = det_output.cols - 5;
+    if (num_classes != static_cast<int>(classes_.size())) {
+        std::cerr << "Warning: model output classes (" << num_classes
+                  << ") does not match label file classes (" << classes_.size()
+                  << ")" << std::endl;
+    }
 
     std::vector<cv::Rect> boxes;
     std::vector<int> classIds;
     std::vector<float> confidences;
-    for (int i = 0; i < det_output.rows; i++)
-    {
+
+    for (int i = 0; i < det_output.rows; i++) {
         float box_conf = det_output.at<float>(i, 4);
-        if (box_conf < nms_threshold_)
-        {
+        if (box_conf < nms_threshold_) {
             continue;
         }
 
-        cv::Mat classes_confidences = det_output.row(i).colRange(5, 85);
+        cv::Mat classes_confidences = det_output.row(i).colRange(5, det_output.cols);
         cv::Point classIdPoint;
         double cls_conf;
         cv::minMaxLoc(classes_confidences, 0, &cls_conf, 0, &classIdPoint);
 
-
-        if (cls_conf > confidence_threshold_)
-        {
+        if (cls_conf > confidence_threshold_) {
             float cx = det_output.at<float>(i, 0);
             float cy = det_output.at<float>(i, 1);
             float ow = det_output.at<float>(i, 2);
             float oh = det_output.at<float>(i, 3);
-            int x = static_cast<int>((cx - 0.5 * ow) * x_factor);
-            int y = static_cast<int>((cy - 0.5 * oh) * y_factor);
-            int width = static_cast<int>(ow * x_factor);
-            int height = static_cast<int>(oh * y_factor);
-            cv::Rect box;
-            box.x = x;
-            box.y = y;
-            box.width = width;
-            box.height = height;
 
-            boxes.push_back(box);
+            float x = (cx - scale_info.pad_x - 0.5f * ow) * scale_info.x_factor;
+            float y = (cy - scale_info.pad_y - 0.5f * oh) * scale_info.y_factor;
+            float width = ow * scale_info.x_factor;
+            float height = oh * scale_info.y_factor;
+
+            boxes.emplace_back(static_cast<int>(x), static_cast<int>(y),
+                               static_cast<int>(width), static_cast<int>(height));
             classIds.push_back(classIdPoint.x);
-            confidences.push_back(cls_conf * box_conf);
+            confidences.push_back(static_cast<float>(cls_conf * box_conf));
         }
     }
 
-    std::vector<int> indexes;
-    cv::dnn::NMSBoxes(boxes, confidences, confidence_threshold_, nms_threshold_, indexes);
-    for (size_t i = 0; i < indexes.size(); i++)
-    {
-        detect_result dr;
-        int index = indexes[i];
-        int idx = classIds[index];
-        dr.box = boxes[index];
-        dr.classId = idx;
-        dr.confidence = confidences[index];
-        results.push_back(dr);
-    }
-
+    results = nms_filter(boxes, confidences, classIds,
+                         confidence_threshold_, nms_threshold_);
 }
-void YOLOv5Detector::draw_frame(cv::Mat & frame, std::vector<detect_result> &results)
+
+void YOLOv5Detector::draw_frame(cv::Mat& frame, std::vector<detect_result>& results)
 {
-
-    for(auto dr : results)
-    {
-
-        cv::rectangle(frame, dr.box , cv::Scalar(0, 0, 255), 2, 8);
-        cv::rectangle(frame, cv::Point(dr.box .tl().x, dr.box .tl().y - 20), cv::Point(dr.box .br().x, dr.box .tl().y), cv::Scalar(255, 0, 0), -1);
-
-        std::string label = cv::format("%.2f", dr.confidence);
-        label = classes_[dr.classId ] + ":" + label;
-
-        cv::putText(frame, label, cv::Point(dr.box.x, dr.box.y + 6), 1, 2, cv::Scalar(0, 255, 0),2);
-
-    }
+    draw_results(frame, results, classes_);
 }
+
+} // namespace detector

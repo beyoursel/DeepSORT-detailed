@@ -61,6 +61,7 @@ bool AppConfig::load(const std::string& yaml_path) {
 
         // detector
         if (config["detector"]) {
+            detector.type = getWithDefault(config["detector"], "type", std::string("yolov5"));
             detector.model_path = safeGetString(config["detector"], "model_path");
             detector.input_width = getWithDefault(config["detector"], "input_width", 640);
             detector.input_height = getWithDefault(config["detector"], "input_height", 640);

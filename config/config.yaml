@@ -6,7 +6,7 @@ dataset:
 
 # 输入源
 input:
-  source: "./test_video.avi"
+  source: "./test_video.avi" # "./test_video.avi" | "./test_frame.jpg"
   type: "video"  # video | image
 
 # 输出配置
@@ -18,9 +18,10 @@ output:
   width: 1920   # fallback width when input video width is unavailable
   height: 1080 # fallback height when input video height is unavailable
 
-# YOLOv5 检测器配置
+# 检测器配置
 detector:
-  model_path: "./models/yolov5s.onnx"
+  type: "yolov8"           # yolov5 | yolov8 | yolov9 | yolov10 | yolov11
+  model_path: "./models/yolov8s.onnx"
   input_width: 640
   input_height: 640
   confidence_threshold: 0.25

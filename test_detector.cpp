@@ -8,7 +8,7 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv2/dnn.hpp>
-#include "YOLOv5Detector.h"
+#include "DetectorFactory.h"
 #include "AppConfig.h"
 
 
@@ -25,8 +25,11 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    std::shared_ptr<YOLOv5Detector> detector(new YOLOv5Detector());
+    std::shared_ptr<detector::IDetector> detector =
+        detector::DetectorFactory::create(cfg->detector.type);
     detector->init();
+
+    std::cout << "Detector type: " << cfg->detector.type << std::endl;
 
     std::vector<detect_result> results;
     cv::Mat frame = cv::imread(cfg->input.source);
@@ -42,7 +45,8 @@ int main(int argc, char *argv[])
 
     detector->draw_frame(frame, results);
 
-    cv::imshow("YOLOv5-6.x", frame);
+    std::string window_title = "Detector: " + cfg->detector.type;
+    cv::imshow(window_title, frame);
 
     cv::imwrite(cfg->output.image, frame);
 

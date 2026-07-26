@@ -8,7 +8,7 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv2/dnn.hpp>
-#include "YOLOv5Detector.h"
+#include "DetectorFactory.h"
 #include "AppConfig.h"
 
 #include "FeatureTensor.h"
@@ -129,7 +129,8 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    std::shared_ptr<YOLOv5Detector> detector(new YOLOv5Detector());
+    std::shared_ptr<detector::IDetector> detector =
+        detector::DetectorFactory::create(cfg->detector.type);
     detector->init();
 
     const auto& input_cfg = cfg->input;
@@ -180,7 +181,7 @@ int main(int argc, char *argv[])
         detector->detect(frame, results);
         auto end = std::chrono::system_clock::now();
         auto detect_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-        std::cout << detector->classes_.size() << ":" << results.size() << ":" << num_frames << std::endl;
+        std::cout << detector->num_classes() << ":" << results.size() << ":" << num_frames << std::endl;
 
         if (cfg->tracker.type == "deepsort") {
             test_deepsort(frame, results, *mytracker);
@@ -188,7 +189,8 @@ int main(int argc, char *argv[])
             test_bytetrack(frame, results, *bytetracker);
         }
 
-        cv::imshow("YOLOv5-6.x", frame);
+        std::string window_title = "Detector: " + cfg->detector.type;
+        cv::imshow(window_title, frame);
 
         video.write(frame);
 

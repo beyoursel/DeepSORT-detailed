@@ -1,19 +1,17 @@
 #pragma once
 
 #include "IDetector.h"
+#include <onnxruntime_cxx_api.h>
 #include <opencv2/opencv.hpp>
-#include <opencv2/dnn.hpp>
-#include <fstream>
-#include <sstream>
 #include <vector>
 #include <string>
 
 namespace detector {
 
-class YOLOv5Detector : public IDetector {
+class YOLOv8Detector : public IDetector {
 public:
-    YOLOv5Detector() = default;
-    ~YOLOv5Detector() override = default;
+    YOLOv8Detector() = default;
+    ~YOLOv8Detector() override = default;
 
     bool init() override;
     void detect(cv::Mat& frame, std::vector<detect_result>& results) override;
@@ -22,8 +20,12 @@ public:
 
 private:
     void load_classes();
+    std::vector<float> preprocess(const cv::Mat& letterboxed);
 
-    cv::dnn::Net net_;
+    Ort::Env env_{nullptr};
+    Ort::Session session_{nullptr};
+    Ort::SessionOptions session_options_;
+
     std::vector<std::string> classes_;
 
     float confidence_threshold_ = 0.25f;

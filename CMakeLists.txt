@@ -21,6 +21,7 @@ include_directories(
     ${OpenCV_INCLUDE_DIRS}/include
     ${CMAKE_SOURCE_DIR}/tracker/deepsort/include
     ${CMAKE_SOURCE_DIR}/tracker/bytetrack/include
+    ${CMAKE_SOURCE_DIR}/detector/include
     ${CMAKE_SOURCE_DIR}/detector/YOLOv5/include
     ${CMAKE_SOURCE_DIR}/config
 
@@ -30,7 +31,10 @@ include_directories(
 add_executable(DeepSORT
     config/AppConfig.cpp
 
+    detector/src/detector_utils.cpp
+    detector/src/DetectorFactory.cpp
     detector/YOLOv5/src/YOLOv5Detector.cpp
+    detector/YOLOv5/src/YOLOv8Detector.cpp
 
     tracker/deepsort/src/FeatureTensor.cpp
     tracker/deepsort/src/model.cpp
@@ -57,7 +61,10 @@ target_link_libraries(DeepSORT PRIVATE "${ONNXRUNTIME_DIR}/lib/libonnxruntime.so
 add_executable(test_detector
     config/AppConfig.cpp
 
+    detector/src/detector_utils.cpp
+    detector/src/DetectorFactory.cpp
     detector/YOLOv5/src/YOLOv5Detector.cpp
+    detector/YOLOv5/src/YOLOv8Detector.cpp
 
     test_detector.cpp)
-target_link_libraries(test_detector PRIVATE  ${OpenCV_LIBS} Eigen3::Eigen yaml-cpp)
+target_link_libraries(test_detector PRIVATE  "${ONNXRUNTIME_DIR}/lib/libonnxruntime.so" ${OpenCV_LIBS} Eigen3::Eigen yaml-cpp)
