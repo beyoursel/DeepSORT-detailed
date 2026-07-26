@@ -1,10 +1,12 @@
 #pragma once
 
+#include "BackendConfig.h"
 #include <string>
 #include <yaml-cpp/yaml.h>
 
 struct DetectorConfig {
     std::string type;
+    std::string backend;   // optional override, fallback to global backend.type
     std::string model_path;
     int input_width;
     int input_height;
@@ -14,6 +16,7 @@ struct DetectorConfig {
 
 struct DeepSORTConfig {
     std::string feature_model_path;
+    std::string backend;   // optional override, fallback to global backend.type
     int feature_dim;
     float max_cosine_distance;
     int nn_budget;
@@ -58,6 +61,7 @@ public:
 
     bool load(const std::string& yaml_path);
 
+    backend::BackendConfig backend;
     DetectorConfig detector;
     DeepSORTConfig deepsort;
     ByteTrackConfig bytetrack;

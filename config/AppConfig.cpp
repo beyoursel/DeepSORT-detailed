@@ -59,9 +59,16 @@ bool AppConfig::load(const std::string& yaml_path) {
             output.height = getWithDefault(config["output"], "height", 1080);
         }
 
+        // global backend
+        if (config["backend"]) {
+            backend.type = getWithDefault(config["backend"], "type", std::string("onnxruntime_cpu"));
+            backend.device_id = getWithDefault(config["backend"], "device_id", 0);
+        }
+
         // detector
         if (config["detector"]) {
             detector.type = getWithDefault(config["detector"], "type", std::string("yolov5"));
+            detector.backend = getWithDefault(config["detector"], "backend", backend.type);
             detector.model_path = safeGetString(config["detector"], "model_path");
             detector.input_width = getWithDefault(config["detector"], "input_width", 640);
             detector.input_height = getWithDefault(config["detector"], "input_height", 640);
@@ -77,6 +84,7 @@ bool AppConfig::load(const std::string& yaml_path) {
         // deepsort
         if (config["deepsort"]) {
             deepsort.feature_model_path = safeGetString(config["deepsort"], "feature_model_path");
+            deepsort.backend = getWithDefault(config["deepsort"], "backend", backend.type);
             deepsort.feature_dim = getWithDefault(config["deepsort"], "feature_dim", 512);
             deepsort.max_cosine_distance = getWithDefault(config["deepsort"], "max_cosine_distance", 0.2f);
             deepsort.nn_budget = getWithDefault(config["deepsort"], "nn_budget", 100);

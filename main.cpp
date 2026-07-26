@@ -14,6 +14,9 @@
 #include "FeatureTensor.h"
 #include "BYTETracker.h" //bytetrack
 #include "tracker.h"//deepsort
+#include "Timer.h"
+
+#include <chrono>
 
 void get_detections(DETECTBOX box,float confidence,DETECTIONS& d)
 {
@@ -25,80 +28,85 @@ void get_detections(DETECTBOX box,float confidence,DETECTIONS& d)
 }
 
 
-void test_deepsort(cv::Mat& frame, std::vector<detect_result>& results,tracker& mytracker)
+void test_deepsort(cv::Mat& frame, std::vector<detect_result>& results, tracker& mytracker)
 {
+    ScopedTimer timer("track");
     std::vector<detect_result> objects;
-
     DETECTIONS detections;
-    for (detect_result dr : results)
+
+    // 1) 先画检测框（绿色，含类别置信度）
+    for (const detect_result& dr : results)
     {
-        if(dr.classId == 0) //person
+        if (dr.classId == 0) // person
         {
             objects.push_back(dr);
-            cv::rectangle(frame, dr.box, cv::Scalar(255, 0, 0), 2);
-            get_detections(DETECTBOX(dr.box.x, dr.box.y,dr.box.width,  dr.box.height),dr.confidence,  detections);
+            get_detections(DETECTBOX(dr.box.x, dr.box.y, dr.box.width, dr.box.height),
+                           dr.confidence, detections);
+
+            std::string det_label = cv::format("person:%.2f", dr.confidence);
+            cv::rectangle(frame, dr.box, cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
+            cv::putText(frame, det_label,
+                        cv::Point(dr.box.x, dr.box.y - 5),
+                        cv::FONT_HERSHEY_SIMPLEX, 0.5,
+                        cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
         }
     }
 
-    std::cout<<"begin track"<<std::endl;
-    if(FeatureTensor::getInstance()->getRectsFeature(frame, detections))
+    if (FeatureTensor::getInstance()->getRectsFeature(frame, detections))
     {
-        std::cout << "get feature succeed!"<<std::endl;
         mytracker.predict();
         mytracker.update(detections);
-        std::vector<RESULT_DATA> result;
-        for(Track& track : mytracker.tracks) {
-            if(!track.is_confirmed() || track.time_since_update > 1) continue;
-            result.push_back(std::make_pair(track.track_id, track.to_tlwh()));
-        }
-        for(unsigned int k = 0; k < detections.size(); k++)
-        {
-            DETECTBOX tmpbox = detections[k].tlwh;
-            cv::Rect rect(tmpbox(0), tmpbox(1), tmpbox(2), tmpbox(3));
-            cv::rectangle(frame, rect, cv::Scalar(0,0,255), 4);
 
-            for(unsigned int k = 0; k < result.size(); k++)
-            {
-                DETECTBOX tmp = result[k].second;
-                cv::Rect rect = cv::Rect(tmp(0), tmp(1), tmp(2), tmp(3));
-                rectangle(frame, rect, cv::Scalar(255, 255, 0), 2);
-
-                std::string label = cv::format("%d", result[k].first);
-                cv::putText(frame, label, cv::Point(rect.x, rect.y), cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 255, 0), 2);
-            }
+        // 2) 再画跟踪框（红色，含 ID）
+        for (Track& track : mytracker.tracks) {
+            if (!track.is_confirmed() || track.time_since_update > 1) continue;
+            DETECTBOX tmp = track.to_tlwh();
+            cv::Rect rect(tmp(0), tmp(1), tmp(2), tmp(3));
+            cv::rectangle(frame, rect, cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
+            std::string label = cv::format("ID:%d", track.track_id);
+            cv::putText(frame, label, cv::Point(rect.x, rect.y - 5),
+                        cv::FONT_HERSHEY_SIMPLEX, 0.6,
+                        cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
         }
     }
-    std::cout<<"end track"<<std::endl;
 }
 
 
-void test_bytetrack(cv::Mat& frame, std::vector<detect_result>& results,BYTETracker& tracker)
+void test_bytetrack(cv::Mat& frame, std::vector<detect_result>& results, BYTETracker& tracker)
 {
+    ScopedTimer timer("track");
     std::vector<detect_result> objects;
 
-
-    for (detect_result dr : results)
+    // 1) 先画检测框（绿色，含类别置信度）
+    for (const detect_result& dr : results)
     {
-
-        if(dr.classId == 0) //person
+        if (dr.classId == 0) // person
         {
             objects.push_back(dr);
+            std::string det_label = cv::format("person:%.2f", dr.confidence);
+            cv::rectangle(frame, dr.box, cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
+            cv::putText(frame, det_label,
+                        cv::Point(dr.box.x, dr.box.y - 5),
+                        cv::FONT_HERSHEY_SIMPLEX, 0.5,
+                        cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
         }
     }
 
-
     std::vector<STrack> output_stracks = tracker.update(objects);
 
-    for (unsigned long i = 0; i < output_stracks.size(); i++)
+    // 2) 再画跟踪框（红色，含 ID）
+    for (size_t i = 0; i < output_stracks.size(); i++)
     {
         std::vector<float> tlwh = output_stracks[i].tlwh;
         bool vertical = tlwh[2] / tlwh[3] > 1.6;
         if (tlwh[2] * tlwh[3] > 20 && !vertical)
         {
-            cv::Scalar s = tracker.get_color(output_stracks[i].track_id);
-            cv::putText(frame, cv::format("%d", output_stracks[i].track_id), cv::Point(tlwh[0], tlwh[1] - 5),
-                    0, 0.6, cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
-            cv::rectangle(frame, cv::Rect(tlwh[0], tlwh[1], tlwh[2], tlwh[3]), s, 2);
+            cv::Rect rect(tlwh[0], tlwh[1], tlwh[2], tlwh[3]);
+            cv::rectangle(frame, rect, cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
+            std::string label = cv::format("ID:%d", output_stracks[i].track_id);
+            cv::putText(frame, label, cv::Point(tlwh[0], tlwh[1] - 5),
+                        cv::FONT_HERSHEY_SIMPLEX, 0.6,
+                        cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
         }
     }
 }
@@ -177,17 +185,25 @@ int main(int argc, char *argv[])
         }
 
         num_frames++;
-        auto start = std::chrono::system_clock::now();
+        auto det_start = std::chrono::steady_clock::now();
         detector->detect(frame, results);
-        auto end = std::chrono::system_clock::now();
-        auto detect_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-        std::cout << detector->num_classes() << ":" << results.size() << ":" << num_frames << std::endl;
+        auto det_end = std::chrono::steady_clock::now();
+        double detect_time = elapsed_ms(det_start, det_end);
 
+        auto track_start = std::chrono::steady_clock::now();
         if (cfg->tracker.type == "deepsort") {
             test_deepsort(frame, results, *mytracker);
         } else {
             test_bytetrack(frame, results, *bytetracker);
         }
+        auto track_end = std::chrono::steady_clock::now();
+        double track_time = elapsed_ms(track_start, track_end);
+
+        std::cout << "[FRAME] frame=" << num_frames
+                  << " dets=" << results.size()
+                  << " det_total=" << detect_time << "ms"
+                  << " track_total=" << track_time << "ms"
+                  << std::endl;
 
         std::string window_title = "Detector: " + cfg->detector.type;
         cv::imshow(window_title, frame);

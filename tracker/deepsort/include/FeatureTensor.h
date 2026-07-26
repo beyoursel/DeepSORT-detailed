@@ -6,6 +6,7 @@
 */
 #include "model.h"
 #include "dataType.h"
+#include "IBackend.h"
 #include <chrono>
 #include <cmath>
 #include <exception>
@@ -16,12 +17,12 @@
 #include <string>
 #include <vector>
 #include <stdexcept> 
-#include <onnxruntime_cxx_api.h>
 #include "opencv2/opencv.hpp"
 #include "opencv2/core/core.hpp"
 #include <opencv2/dnn/dnn.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
+
 typedef unsigned char uint8;
 
 template <typename T>
@@ -45,6 +46,7 @@ std::ostream &operator<<(std::ostream &os, const std::vector<T> &v)
     os << "]";
     return os;
 }
+
 class FeatureTensor
 {
 public:
@@ -72,13 +74,8 @@ public:
 
     std::vector<float> results_;
 
-    Ort::Env env;
-    Ort::Session session_{nullptr};
-
-    Ort::Value input_tensor_{nullptr};
-    std::array<int64_t, 4> input_shape_{1, 3, width_, height_};
-
-    Ort::Value output_tensor_{nullptr};
+    std::shared_ptr<backend::IBackend> backend_;
+    std::vector<int64_t> input_shape_{1, 3, height_, width_};
     std::vector<int64_t> output_shape_;
 
     std::vector<int64_t> inputDims_;

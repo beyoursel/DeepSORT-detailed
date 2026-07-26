@@ -4,9 +4,10 @@
     @Date        : 2022-09-21 04:32:26
 */
 
-//#include "globalconfig.h"
 #include "FeatureTensor.h"
+#include "BackendFactory.h"
 #include "AppConfig.h"
+#include "Timer.h"
 #include <iostream>
 
 FeatureTensor *FeatureTensor::instance = NULL;
@@ -27,7 +28,16 @@ FeatureTensor::FeatureTensor()
     results_.resize(cfg.feature_dim);
     output_shape_ = {1, cfg.feature_dim};
 
-    session_ = Ort::Session(env, cfg.feature_model_path.c_str(), Ort::SessionOptions{nullptr});
+    backend::BackendConfig backend_cfg;
+    backend_cfg.type = cfg.backend;
+    backend_cfg.model_path = cfg.feature_model_path;
+    backend_cfg.device_id = AppConfig::getInstance()->backend.device_id;
+
+    backend_ = backend::BackendFactory::create(backend_cfg);
+    if (!backend_->load_model(backend_cfg.model_path)) {
+        std::cout << "FeatureTensor init failed: cannot load model" << std::endl;
+        exit(1);
+    }
 
     // prepare model:
     bool status = init();
@@ -48,18 +58,19 @@ FeatureTensor::~FeatureTensor()
 
 bool FeatureTensor::init()
 {
+    // Query input shape from backend by running a dummy inference.
+    std::vector<float> dummy_input(width_ * height_ * 3, 0.0f);
+    std::vector<float> dummy_output;
+    std::vector<int64_t> output_shape;
 
-    Ort::TypeInfo inputTypeInfo = session_.GetInputTypeInfo(0);
-    auto inputTensorInfo = inputTypeInfo.GetTensorTypeAndShapeInfo();
+    if (!backend_->run("input", dummy_input, input_shape_, "output", dummy_output, output_shape)) {
+        std::cerr << "FeatureTensor init failed: dummy inference failed" << std::endl;
+        return false;
+    }
 
-    ONNXTensorElementDataType inputType = inputTensorInfo.GetElementType();
-    std::cout << "Input Type: " << inputType << std::endl;
-
-    inputDims_ = inputTensorInfo.GetShape();
-    std::cout << "Input Dimensions: " << inputDims_ << std::endl; // [-1, 3, 128, 64]
-    inputDims_[0] = 1;
+    inputDims_ = input_shape_;
+    std::cout << "Input Dimensions: " << inputDims_ << std::endl; // [1, 3, 128, 64]
     std::cout << "FeatureTensor::init() " << std::endl;
-
 
     return true;
 }
@@ -113,6 +124,7 @@ void FeatureTensor::preprocess(cv::Mat &imageBGR, std::vector<float> &inputTenso
 
 bool FeatureTensor::getRectsFeature(const cv::Mat &img, DETECTIONS &d)
 {
+    ScopedTimer timer("reid");
 
     for (DETECTION_ROW &dbox : d)
     {
@@ -131,37 +143,18 @@ bool FeatureTensor::getRectsFeature(const cv::Mat &img, DETECTIONS &d)
         size_t inputTensorSize;
         preprocess(mattmp, inputTensorValues, inputTensorSize);
 
-        const char *input_names[] = {"input"};   //输入节点名
-        const char *output_names[] = {"output"}; //输出节点名
+        if (!backend_->run("input", inputTensorValues, inputDims_,
+                           "output", results_, output_shape_)) {
+            std::cerr << "FeatureTensor inference failed" << std::endl;
+            return false;
+        }
 
-        auto memory_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeDefault);
-        output_tensor_ = Ort::Value::CreateTensor<float>(memory_info, results_.data(), results_.size(), output_shape_.data(), output_shape_.size());
+        std::cout << "output shape:" << output_shape_[0] << "," << output_shape_[1] << std::endl;
 
-        std::vector<Ort::Value> inputTensors;
-        inputTensors.push_back(Ort::Value::CreateTensor<float>(
-            memory_info, inputTensorValues.data(), inputTensorSize, inputDims_.data(),
-            inputDims_.size()));
-
-
-        session_.Run(Ort::RunOptions{nullptr}, input_names, inputTensors.data(), 1, output_names, &output_tensor_, 1);
-     
-        Ort::TensorTypeAndShapeInfo shape_info = output_tensor_.GetTensorTypeAndShapeInfo();
-
-
-        size_t dim_count = shape_info.GetDimensionsCount();
-        std::cout << "dim_count:" << dim_count << std::endl;
-
-  
-        int64_t dims[2];
-        shape_info.GetDimensions(dims, sizeof(dims) / sizeof(dims[0]));
-        std::cout << "output shape:" << dims[0] << "," << dims[1] << std::endl;
-
-
-        float *f = output_tensor_.GetTensorMutableData<float>();
-        dbox.feature.resize(1, dims[1]);
-        for (int i = 0; i < dims[1]; i++) //sisyphus
+        dbox.feature.resize(1, output_shape_[1]);
+        for (int i = 0; i < output_shape_[1]; i++)
         {
-            dbox.feature[i] = f[i];
+            dbox.feature[i] = results_[i];
         }
     }
 

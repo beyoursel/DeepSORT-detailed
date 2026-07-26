@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IDetector.h"
+#include "IBackend.h"
 #include <opencv2/opencv.hpp>
 #include <opencv2/dnn.hpp>
 #include <fstream>
@@ -22,15 +23,15 @@ public:
 
 private:
     void load_classes();
+    std::vector<float> preprocess(const cv::Mat& letterboxed);
 
-    cv::dnn::Net net_;
+    std::shared_ptr<backend::IBackend> backend_;
     std::vector<std::string> classes_;
 
     float confidence_threshold_ = 0.25f;
     float nms_threshold_ = 0.4f;
     int model_input_width_ = 640;
     int model_input_height_ = 640;
-    std::string model_path_;
     std::string classes_path_;
 };
 

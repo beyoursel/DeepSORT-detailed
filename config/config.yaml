@@ -1,5 +1,10 @@
 # DeepSORT / ByteTrack 运行配置
 
+# 推理后端配置
+backend:
+  type: "onnxruntime_gpu"   # onnxruntime_cpu | onnxruntime_gpu
+  device_id: 0
+
 # 类别标签文件路径
 dataset:
   coco_labels: "./coco_80_labels_list.txt"
@@ -21,6 +26,7 @@ output:
 # 检测器配置
 detector:
   type: "yolov8"           # yolov5 | yolov8 | yolov9 | yolov10 | yolov11
+  backend: "onnxruntime_gpu" # optional override for global backend
   model_path: "./models/yolov8s.onnx"
   input_width: 640
   input_height: 640
@@ -29,11 +35,12 @@ detector:
 
 # 跟踪器选择
 tracker:
-  type: "deepsort"  # deepsort | bytetrack
+  type: "bytetrack"  # deepsort | bytetrack
 
 # DeepSORT 配置
 deepsort:
   feature_model_path: "./models/feature.onnx"
+  backend: "onnxruntime_gpu" # optional override for global backend
   feature_dim: 512
   max_cosine_distance: 0.2
   nn_budget: 100
