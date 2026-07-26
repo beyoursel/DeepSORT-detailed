@@ -7,9 +7,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
 find_package (Eigen3 3.3 REQUIRED NO_MODULE)
+find_package(yaml-cpp REQUIRED)
 
 
-set(ONNXRUNTIME_DIR "/home/a/lib/onnxruntime-linux-x64-1.12.1")
+set(ONNXRUNTIME_DIR "/media/taole/mydisk/DL_PROJECT/DeepSORT-detailed/lib/onnxruntime-linux-x64-1.12.1")
 
 include_directories("${ONNXRUNTIME_DIR}/include"
     )
@@ -21,11 +22,14 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/tracker/deepsort/include
     ${CMAKE_SOURCE_DIR}/tracker/bytetrack/include
     ${CMAKE_SOURCE_DIR}/detector/YOLOv5/include
+    ${CMAKE_SOURCE_DIR}/config
 
     )
 
 
 add_executable(DeepSORT
+    config/AppConfig.cpp
+
     detector/YOLOv5/src/YOLOv5Detector.cpp
 
     tracker/deepsort/src/FeatureTensor.cpp
@@ -45,13 +49,15 @@ add_executable(DeepSORT
     tracker/bytetrack/src/utils.cpp
 
     main.cpp)
-target_link_libraries(DeepSORT PRIVATE "${ONNXRUNTIME_DIR}/lib/libonnxruntime.so" ${OpenCV_LIBS} Eigen3::Eigen)
+target_link_libraries(DeepSORT PRIVATE "${ONNXRUNTIME_DIR}/lib/libonnxruntime.so" ${OpenCV_LIBS} Eigen3::Eigen yaml-cpp)
 
 
 
 
 add_executable(test_detector
+    config/AppConfig.cpp
+
     detector/YOLOv5/src/YOLOv5Detector.cpp
 
     test_detector.cpp)
-target_link_libraries(test_detector PRIVATE  ${OpenCV_LIBS} Eigen3::Eigen)
+target_link_libraries(test_detector PRIVATE  ${OpenCV_LIBS} Eigen3::Eigen yaml-cpp)

@@ -13,17 +13,10 @@
 #include <Eigen/Dense>
 
 
-const int k_feature_dim=512;//feature dim
-
-const std::string  k_feature_model_path ="./feature.onnx";
-const std::string  k_detect_model_path ="./yolov5s.onnx";
-
-
 typedef Eigen::Matrix<float, 1, 4, Eigen::RowMajor> DETECTBOX;
 typedef Eigen::Matrix<float, -1, 4, Eigen::RowMajor> DETECTBOXSS;
-typedef Eigen::Matrix<float, 1, k_feature_dim, Eigen::RowMajor> FEATURE;
-typedef Eigen::Matrix<float, Eigen::Dynamic, k_feature_dim, Eigen::RowMajor> FEATURESS;
-//typedef std::vector<FEATURE> FEATURESS;
+typedef Eigen::Matrix<float, 1, -1, Eigen::RowMajor> FEATURE;
+typedef Eigen::Matrix<float, -1, -1, Eigen::RowMajor> FEATURESS;
 
 //Kalmanfilter
 //typedef Eigen::Matrix<float, 8, 8, Eigen::RowMajor> KAL_FILTER;

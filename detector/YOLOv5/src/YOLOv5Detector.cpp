@@ -4,14 +4,21 @@
     @Date        : 2022-09-23 02:52:41
 */
 #include <YOLOv5Detector.h>
+#include <AppConfig.h>
 #include <iostream>
 
-void YOLOv5Detector::init(std::string onnxpath)
+void YOLOv5Detector::init()
 {
+    const DetectorConfig& cfg = AppConfig::getInstance()->detector;
 
-    this->net = cv::dnn::readNetFromONNX(onnxpath);
+    confidence_threshold_ = cfg.confidence_threshold;
+    nms_threshold_ = cfg.nms_threshold;
+    model_input_width_ = cfg.input_width;
+    model_input_height_ = cfg.input_height;
 
-    std::string file="./coco_80_labels_list.txt";
+    this->net = cv::dnn::readNetFromONNX(cfg.model_path);
+
+    std::string file = AppConfig::getInstance()->dataset.coco_labels;
     std::ifstream ifs(file);
     if (!ifs.is_open())
         CV_Error(cv::Error::StsError, "File " + file + " not found");

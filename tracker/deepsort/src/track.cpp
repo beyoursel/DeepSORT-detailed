@@ -9,7 +9,7 @@ Track::Track(KAL_MEAN &mean, KAL_COVA &covariance, int track_id, int n_init, int
     this->age = 1;
     this->time_since_update = 0;
     this->state = TrackState::Tentative;
-    features = FEATURESS(1, k_feature_dim);
+    features = FEATURESS(1, feature.cols());
     features.row(0) = feature; // features.rows() must = 0;
 
     this->_n_init = n_init;
@@ -86,8 +86,9 @@ DETECTBOX Track::to_tlwh()
 void Track::featuresAppendOne(const FEATURE &f)
 {
     int size = this->features.rows();
-    FEATURESS newfeatures = FEATURESS(size + 1, k_feature_dim);
-    newfeatures.block(0, 0, size, k_feature_dim) = this->features;
+    int dim = this->features.cols();
+    FEATURESS newfeatures = FEATURESS(size + 1, dim);
+    newfeatures.block(0, 0, size, dim) = this->features;
     newfeatures.row(size) = f;
     features = newfeatures;
 }

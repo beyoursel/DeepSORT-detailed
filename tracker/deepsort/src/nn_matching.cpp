@@ -54,29 +54,30 @@ NearNeighborDisMetric::partial_fit(
           int addSize = newFeatOne.rows();
           int newSize = oldSize + addSize;
 
+          int feature_dim = samples[track_id].cols();
           if(newSize <= this->budget) {
-              FEATURESS newSampleFeatures(newSize, k_feature_dim);
-              newSampleFeatures.block(0,0, oldSize, k_feature_dim) = samples[track_id];
-              newSampleFeatures.block(oldSize, 0, addSize, k_feature_dim) = newFeatOne;
+              FEATURESS newSampleFeatures(newSize, feature_dim);
+              newSampleFeatures.block(0,0, oldSize, feature_dim) = samples[track_id];
+              newSampleFeatures.block(oldSize, 0, addSize, feature_dim) = newFeatOne;
               samples[track_id] = newSampleFeatures;
             } else {
               if(oldSize < this->budget) {//original space is not enough;
-                  FEATURESS newSampleFeatures(this->budget, k_feature_dim);
+                  FEATURESS newSampleFeatures(this->budget, feature_dim);
                   if(addSize >= this->budget) {
-                      newSampleFeatures = newFeatOne.block(0, 0, this->budget, k_feature_dim);
+                      newSampleFeatures = newFeatOne.block(0, 0, this->budget, feature_dim);
                     } else {
-                      newSampleFeatures.block(0, 0, this->budget-addSize, k_feature_dim) =
-                          samples[track_id].block(addSize-1, 0, this->budget-addSize, k_feature_dim).eval();
-                      newSampleFeatures.block(this->budget-addSize, 0, addSize, k_feature_dim) = newFeatOne;
+                      newSampleFeatures.block(0, 0, this->budget-addSize, feature_dim) =
+                          samples[track_id].block(addSize-1, 0, this->budget-addSize, feature_dim).eval();
+                      newSampleFeatures.block(this->budget-addSize, 0, addSize, feature_dim) = newFeatOne;
                     }
                   samples[track_id] = newSampleFeatures;
                 } else {//original space is ok;
                   if(addSize >= this->budget) {
-                      samples[track_id] = newFeatOne.block(0,0, this->budget, k_feature_dim);
+                      samples[track_id] = newFeatOne.block(0,0, this->budget, feature_dim);
                     } else {
-                      samples[track_id].block(0, 0, this->budget-addSize, k_feature_dim) =
-                          samples[track_id].block(addSize-1, 0, this->budget-addSize, k_feature_dim).eval();
-                      samples[track_id].block(this->budget-addSize, 0, addSize, k_feature_dim) = newFeatOne;
+                      samples[track_id].block(0, 0, this->budget-addSize, feature_dim) =
+                          samples[track_id].block(addSize-1, 0, this->budget-addSize, feature_dim).eval();
+                      samples[track_id].block(this->budget-addSize, 0, addSize, feature_dim) = newFeatOne;
                     }
                 }
             }

@@ -70,16 +70,16 @@ public:
 
     std::array<float, width_ * height_> input_image_{};
 
-    std::array<float, k_feature_dim> results_{};
+    std::vector<float> results_;
 
     Ort::Env env;
-    Ort::Session session_{env, k_feature_model_path.c_str(), Ort::SessionOptions{nullptr}};
+    Ort::Session session_{nullptr};
 
     Ort::Value input_tensor_{nullptr};
     std::array<int64_t, 4> input_shape_{1, 3, width_, height_};
 
     Ort::Value output_tensor_{nullptr};
-    std::array<int64_t, 2> output_shape_{1, k_feature_dim};
+    std::vector<int64_t> output_shape_;
 
     std::vector<int64_t> inputDims_;
 };

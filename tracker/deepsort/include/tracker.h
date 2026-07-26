@@ -6,6 +6,7 @@
 #include "kalmanfilter.h"
 #include "track.h"
 #include "model.h"
+#include "AppConfig.h"
 
 class NearNeighborDisMetric;
 
@@ -22,10 +23,7 @@ public:
     int _next_idx;
 public:
     std::vector<Track> tracks;
-    tracker(/*NearNeighborDisMetric* metric,*/
-    		float max_cosine_distance, int nn_budget,
-            float max_iou_distance = 0.7,
-            int max_age = 30, int n_init=3);
+    explicit tracker(const DeepSORTConfig& cfg);
     void predict();
     void update(const DETECTIONS& detections);
     typedef DYNAMICM (tracker::* GATED_METRIC_FUNC)(

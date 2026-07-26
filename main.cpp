@@ -9,14 +9,11 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/dnn.hpp>
 #include "YOLOv5Detector.h"
+#include "AppConfig.h"
 
 #include "FeatureTensor.h"
 #include "BYTETracker.h" //bytetrack
 #include "tracker.h"//deepsort
-//Deep SORT parameter
-
-const int nn_budget=100;
-const float max_cosine_distance=0.2;
 
 void get_detections(DETECTBOX box,float confidence,DETECTIONS& d)
 {
@@ -35,7 +32,6 @@ void test_deepsort(cv::Mat& frame, std::vector<detect_result>& results,tracker& 
     DETECTIONS detections;
     for (detect_result dr : results)
     {
-        //cv::putText(frame, classes[dr.classId], cv::Point(dr.box.tl().x+10, dr.box.tl().y - 10), cv::FONT_HERSHEY_SIMPLEX, .8, cv::Scalar(0, 255, 0));
         if(dr.classId == 0) //person
         {
             objects.push_back(dr);
@@ -60,7 +56,6 @@ void test_deepsort(cv::Mat& frame, std::vector<detect_result>& results,tracker& 
             DETECTBOX tmpbox = detections[k].tlwh;
             cv::Rect rect(tmpbox(0), tmpbox(1), tmpbox(2), tmpbox(3));
             cv::rectangle(frame, rect, cv::Scalar(0,0,255), 4);
-            // cvScalar的储存顺序是B-G-R，CV_RGB的储存顺序是R-G-B
 
             for(unsigned int k = 0; k < result.size(); k++)
             {
@@ -106,88 +101,110 @@ void test_bytetrack(cv::Mat& frame, std::vector<detect_result>& results,BYTETrac
             cv::rectangle(frame, cv::Rect(tlwh[0], tlwh[1], tlwh[2], tlwh[3]), s, 2);
         }
     }
-
-
 }
+
 int main(int argc, char *argv[])
 {
-    //deepsort
-    tracker mytracker(max_cosine_distance, nn_budget);
-    //bytetrack
-    int fps=20;
-    BYTETracker bytetracker(fps, 30);
-    //-----------------------------------------------------------------------
-    // 加载类别名称
-    std::vector<std::string> classes;
-    std::string file="./coco_80_labels_list.txt";
-    std::ifstream ifs(file);
-    if (!ifs.is_open())
-        CV_Error(cv::Error::StsError, "File " + file + " not found");
-    std::string line;
-    while (std::getline(ifs, line))
-    {
-        classes.push_back(line);
+    std::string config_path = "./config/config.yaml";
+    if (argc > 1) {
+        config_path = argv[1];
     }
-    //-----------------------------------------------------------------------
 
-    std::cout<<"classes:"<<classes.size();
+    AppConfig* cfg = AppConfig::getInstance();
+    if (!cfg->load(config_path)) {
+        std::cerr << "Failed to load config from " << config_path << std::endl;
+        return -1;
+    }
+
+    // Initialize tracker based on config
+    tracker* mytracker = nullptr;
+    BYTETracker* bytetracker = nullptr;
+
+    if (cfg->tracker.type == "deepsort") {
+        mytracker = new tracker(cfg->deepsort);
+    } else if (cfg->tracker.type == "bytetrack") {
+        bytetracker = new BYTETracker(cfg->bytetrack);
+    } else {
+        std::cerr << "Unknown tracker type: " << cfg->tracker.type << std::endl;
+        return -1;
+    }
+
     std::shared_ptr<YOLOv5Detector> detector(new YOLOv5Detector());
+    detector->init();
 
+    const auto& input_cfg = cfg->input;
+    const auto& output_cfg = cfg->output;
 
-    detector->init(k_detect_model_path);
-
-    std::cout<<"begin read video"<<std::endl;
-    cv::VideoCapture capture("./1.mp4");
+    std::cout << "begin read video" << std::endl;
+    cv::VideoCapture capture(input_cfg.source);
 
     if (!capture.isOpened()) {
         printf("could not read this video file...\n");
         return -1;
     }
-    std::cout<<"end read video"<<std::endl;
+    std::cout << "end read video" << std::endl;
+
     std::vector<detect_result> results;
     int num_frames = 0;
 
-    cv::VideoWriter video("out.avi",cv::VideoWriter::fourcc('M','J','P','G'),10, cv::Size(1920,1080));
+    // Use input video's native size and fps for output to avoid resolution mismatch.
+    int input_fps = static_cast<int>(capture.get(cv::CAP_PROP_FPS));
+    int input_width = static_cast<int>(capture.get(cv::CAP_PROP_FRAME_WIDTH));
+    int input_height = static_cast<int>(capture.get(cv::CAP_PROP_FRAME_HEIGHT));
+    if (input_fps <= 0) input_fps = output_cfg.fps;
+    if (input_width <= 0) input_width = output_cfg.width;
+    if (input_height <= 0) input_height = output_cfg.height;
+
+    int fourcc = cv::VideoWriter::fourcc(
+        output_cfg.fourcc[0], output_cfg.fourcc[1],
+        output_cfg.fourcc[2], output_cfg.fourcc[3]);
+    cv::VideoWriter video(output_cfg.video, fourcc, input_fps,
+                          cv::Size(input_width, input_height));
+    if (!video.isOpened()) {
+        std::cerr << "Failed to open video writer: " << output_cfg.video << std::endl;
+        return -1;
+    }
 
     while (true)
     {
         cv::Mat frame;
 
-
-        if (!capture.read(frame)) // if not success, break loop
+        if (!capture.read(frame))
         {
-            std::cout<<"\n Cannot read the video file. please check your video.\n";
+            std::cout << "\n Cannot read the video file. please check your video.\n";
             break;
         }
 
-        num_frames ++;
-        //Second/Millisecond/Microsecond  秒s/毫秒ms/微秒us
+        num_frames++;
         auto start = std::chrono::system_clock::now();
         detector->detect(frame, results);
         auto end = std::chrono::system_clock::now();
-        auto detect_time =std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();//ms
-        std::cout<<classes.size()<<":"<<results.size()<<":"<<num_frames<<std::endl;
+        auto detect_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        std::cout << detector->classes_.size() << ":" << results.size() << ":" << num_frames << std::endl;
 
-
-        //test_deepsort(frame, results,mytracker);
-        test_bytetrack(frame, results,bytetracker);
+        if (cfg->tracker.type == "deepsort") {
+            test_deepsort(frame, results, *mytracker);
+        } else {
+            test_bytetrack(frame, results, *bytetracker);
+        }
 
         cv::imshow("YOLOv5-6.x", frame);
 
         video.write(frame);
 
-        if(cv::waitKey(30) == 27) // Wait for 'esc' key press to exit
+        if(cv::waitKey(30) == 27)
         {
             break;
         }
 
         results.clear();
-
-
     }
     capture.release();
     video.release();
     cv::destroyAllWindows();
 
+    delete mytracker;
+    delete bytetracker;
 
+    return 0;
 }

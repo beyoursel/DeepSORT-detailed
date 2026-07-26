@@ -6,6 +6,7 @@
 
 //#include "globalconfig.h"
 #include "FeatureTensor.h"
+#include "AppConfig.h"
 #include <iostream>
 
 FeatureTensor *FeatureTensor::instance = NULL;
@@ -21,6 +22,13 @@ FeatureTensor *FeatureTensor::getInstance()
 
 FeatureTensor::FeatureTensor()
 {
+    const DeepSORTConfig& cfg = AppConfig::getInstance()->deepsort;
+
+    results_.resize(cfg.feature_dim);
+    output_shape_ = {1, cfg.feature_dim};
+
+    session_ = Ort::Session(env, cfg.feature_model_path.c_str(), Ort::SessionOptions{nullptr});
+
     // prepare model:
     bool status = init();
     if (status == false)
@@ -150,6 +158,7 @@ bool FeatureTensor::getRectsFeature(const cv::Mat &img, DETECTIONS &d)
 
 
         float *f = output_tensor_.GetTensorMutableData<float>();
+        dbox.feature.resize(1, dims[1]);
         for (int i = 0; i < dims[1]; i++) //sisyphus
         {
             dbox.feature[i] = f[i];

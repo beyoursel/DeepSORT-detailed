@@ -2,12 +2,13 @@
 
 #include "STrack.h"
 #include "YOLOv5Detector.h"
+#include "AppConfig.h"
 
 
 class BYTETracker
 {
 public:
-	BYTETracker(int frame_rate = 30, int track_buffer = 30);
+	explicit BYTETracker(const ByteTrackConfig& cfg);
 	~BYTETracker();
 
 	 std::vector<STrack> update(const  std::vector<detect_result>& objects);

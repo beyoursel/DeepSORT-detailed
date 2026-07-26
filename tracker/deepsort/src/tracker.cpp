@@ -2,6 +2,7 @@
 #include "nn_matching.h"
 #include "model.h"
 #include "linear_assignment.h"
+#include "AppConfig.h"
 using namespace std;
 
 //#define MY_inner_DEBUG
@@ -10,16 +11,14 @@ using namespace std;
 #include <iostream>
 #endif
 
-tracker::tracker(/*NearNeighborDisMetric *metric,*/
-                 float max_cosine_distance, int nn_budget,
-                 float max_iou_distance, int max_age, int n_init)
+tracker::tracker(const DeepSORTConfig& cfg)
 {
     this->metric = new NearNeighborDisMetric(
         NearNeighborDisMetric::METRIC_TYPE::cosine,
-        max_cosine_distance, nn_budget);
-    this->max_iou_distance = max_iou_distance;
-    this->max_age = max_age;
-    this->n_init = n_init;
+        cfg.max_cosine_distance, cfg.nn_budget);
+    this->max_iou_distance = cfg.max_iou_distance;
+    this->max_age = cfg.max_age;
+    this->n_init = cfg.n_init;
 
     this->kf = new KalmanFilter();
     this->tracks.clear();
@@ -83,13 +82,14 @@ void tracker::update(const DETECTIONS &detections)
 
     vector<int> active_targets;
     vector<TRACKER_DATA> tid_features;
+    int feature_dim = AppConfig::getInstance()->deepsort.feature_dim;
     for (Track &track : tracks)
     {
         if (track.is_confirmed() == false)
             continue;
         active_targets.push_back(track.track_id);
         tid_features.push_back(std::make_pair(track.track_id, track.features));
-        FEATURESS t = FEATURESS(0, k_feature_dim);
+        FEATURESS t = FEATURESS(0, feature_dim);
         track.features = t;
     }
     this->metric->partial_fit(tid_features, active_targets);
@@ -170,7 +170,8 @@ DYNAMICM tracker::gated_matric(
     const std::vector<int> &track_indices,
     const std::vector<int> &detection_indices)
 {
-    FEATURESS features(detection_indices.size(), k_feature_dim);
+    int feature_dim = AppConfig::getInstance()->deepsort.feature_dim;
+    FEATURESS features(detection_indices.size(), feature_dim);
     int pos = 0;
     for (int i : detection_indices)
     {

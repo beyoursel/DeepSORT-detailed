@@ -94,20 +94,44 @@ set(ONNXRUNTIME_DIR "/home/a/lib/onnxruntime-linux-x64-1.12.1")
 ```
 
 
-#### 2 模型配置
-以下三项根据自己的需要更改
-文件`tracker/deepsort/include/dataType.h`
-```c
-const int k_feature_dim=512;//feature dim
-const std::string  k_feature_model_path ="./feature.onnx";
-const std::string  k_detect_model_path ="./yolov5s.onnx";
+#### 2 参数配置
+所有运行参数统一放在 `config/config.yaml` 中，按需修改：
+
+```yaml
+# 输入输出
+dataset:
+  coco_labels: "./coco_80_labels_list.txt"
+input:
+  source: "./1.mp4"
+  type: "video"
+output:
+  video: "out.avi"
+  image: "out1.jpg"
+
+# 检测模型
+detector:
+  model_path: "./yolov5s.onnx"
+  input_width: 640
+  input_height: 640
+  confidence_threshold: 0.25
+  nms_threshold: 0.4
+
+# 跟踪器选择
+tracker:
+  type: "bytetrack"  # deepsort | bytetrack
+
+# DeepSORT / ByteTrack 参数...
 ```
 
-#### 3 主函数
-选择打开视频文件或者视频流等
+#### 3 运行
 
-```c
-cv::VideoCapture capture("./1.mp4");
+```bash
+./DeepSORT
+# 或指定配置文件
+./DeepSORT /path/to/config.yaml
+
+./test_detector
+./test_detector /path/to/config.yaml
 ```
 
 ### 扩展方式

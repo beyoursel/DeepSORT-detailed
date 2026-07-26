@@ -1,0 +1,49 @@
+# DeepSORT / ByteTrack 运行配置
+
+# 类别标签文件路径
+dataset:
+  coco_labels: "./coco_80_labels_list.txt"
+
+# 输入源
+input:
+  source: "./test_video.avi"
+  type: "video"  # video | image
+
+# 输出配置
+output:
+  video: "out.avi"
+  image: "out1.jpg"
+  fourcc: "MJPG"
+  fps: 10       # fallback fps when input video fps is unavailable
+  width: 1920   # fallback width when input video width is unavailable
+  height: 1080 # fallback height when input video height is unavailable
+
+# YOLOv5 检测器配置
+detector:
+  model_path: "./models/yolov5s.onnx"
+  input_width: 640
+  input_height: 640
+  confidence_threshold: 0.25
+  nms_threshold: 0.4
+
+# 跟踪器选择
+tracker:
+  type: "deepsort"  # deepsort | bytetrack
+
+# DeepSORT 配置
+deepsort:
+  feature_model_path: "./models/feature.onnx"
+  feature_dim: 512
+  max_cosine_distance: 0.2
+  nn_budget: 100
+  max_iou_distance: 0.7
+  max_age: 30
+  n_init: 3
+
+# ByteTrack 配置
+bytetrack:
+  fps: 20
+  track_buffer: 30
+  track_thresh: 0.5
+  high_thresh: 0.6
+  match_thresh: 0.8
