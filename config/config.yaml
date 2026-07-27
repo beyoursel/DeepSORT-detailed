@@ -25,9 +25,9 @@ output:
 
 # 检测器配置
 detector:
-  type: "yolov8"           # yolov5 | yolov8 | yolov9 | yolov10 | yolov11
+  type: "yolov26"           # yolov5 | yolov8 | yolo26
   backend: "onnxruntime_gpu" # optional override for global backend
-  model_path: "./models/yolov8s.onnx"
+  model_path: "./models/yolo26s.onnx"
   input_width: 640
   input_height: 640
   confidence_threshold: 0.25

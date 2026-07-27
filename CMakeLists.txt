@@ -58,6 +58,7 @@ add_executable(DeepSORT
     detector/src/DetectorFactory.cpp
     detector/yolo/src/YOLOv5Detector.cpp
     detector/yolo/src/YOLOv8Detector.cpp
+    detector/yolo/src/YOLOv26Detector.cpp
 
     tracker/deepsort/src/FeatureTensor.cpp
     tracker/deepsort/src/model.cpp
@@ -100,6 +101,7 @@ add_executable(test_detector
     detector/src/DetectorFactory.cpp
     detector/yolo/src/YOLOv5Detector.cpp
     detector/yolo/src/YOLOv8Detector.cpp
+    detector/yolo/src/YOLOv26Detector.cpp
 
     test_detector.cpp)
 

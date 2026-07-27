@@ -1,0 +1,49 @@
+# YOLOv26 单帧图像检测（CPU 后端）
+
+backend:
+  type: "onnxruntime_cpu"
+  device_id: 0
+
+dataset:
+  coco_labels: "./coco_80_labels_list.txt"
+
+input:
+  source: "./test_frame.jpg"
+  type: "image"
+
+output:
+  video: "out.avi"
+  image: "out_yolov26_cpu.jpg"
+  fourcc: "MJPG"
+  fps: 10
+  width: 1920
+  height: 1080
+
+detector:
+  type: "yolov26"
+  backend: "onnxruntime_cpu"
+  model_path: "./models/yolo26n.onnx"
+  input_width: 640
+  input_height: 640
+  confidence_threshold: 0.25
+  nms_threshold: 0.4
+
+tracker:
+  type: "bytetrack"
+
+deepsort:
+  feature_model_path: "./models/feature.onnx"
+  backend: "onnxruntime_cpu"
+  feature_dim: 512
+  max_cosine_distance: 0.2
+  nn_budget: 100
+  max_iou_distance: 0.7
+  max_age: 30
+  n_init: 3
+
+bytetrack:
+  fps: 20
+  track_buffer: 30
+  track_thresh: 0.5
+  high_thresh: 0.6
+  match_thresh: 0.8
