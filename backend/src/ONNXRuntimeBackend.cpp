@@ -37,9 +37,11 @@ bool ONNXRuntimeBackend::load_model(const std::string& model_path) {
     }
     try {
         session_ = Ort::Session(env_, model_path.c_str(), session_options_);
+        model_loaded_ = true;
         std::cout << "Loaded model: " << model_path << std::endl;
         return true;
     } catch (const std::exception& e) {
+        model_loaded_ = false;
         std::cerr << "Failed to load model " << model_path << ": " << e.what() << std::endl;
         return false;
     }
@@ -53,6 +55,10 @@ bool ONNXRuntimeBackend::run(const std::string& input_name,
                              std::vector<int64_t>& output_shape) {
     if (!initialized_) {
         std::cerr << "Backend not initialized" << std::endl;
+        return false;
+    }
+    if (!model_loaded_) {
+        std::cerr << "Model not loaded, cannot run inference" << std::endl;
         return false;
     }
 

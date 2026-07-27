@@ -30,6 +30,7 @@ private:
     Ort::Session session_{nullptr};
 
     bool initialized_ = false;
+    bool model_loaded_ = false;
 };
 
 } // namespace backend

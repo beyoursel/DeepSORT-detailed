@@ -27,7 +27,10 @@ int main(int argc, char *argv[])
 
     std::shared_ptr<detector::IDetector> detector =
         detector::DetectorFactory::create(cfg->detector.type);
-    detector->init();
+    if (!detector->init()) {
+        std::cerr << "Detector initialization failed, exiting." << std::endl;
+        return -1;
+    }
 
     std::cout << "Detector type: " << cfg->detector.type << std::endl;
 

@@ -38,7 +38,7 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/tracker/deepsort/include
     ${CMAKE_SOURCE_DIR}/tracker/bytetrack/include
     ${CMAKE_SOURCE_DIR}/detector/include
-    ${CMAKE_SOURCE_DIR}/detector/YOLOv5/include
+    ${CMAKE_SOURCE_DIR}/detector/yolo/include
     ${CMAKE_SOURCE_DIR}/config
 
     )
@@ -56,8 +56,8 @@ add_executable(DeepSORT
 
     detector/src/detector_utils.cpp
     detector/src/DetectorFactory.cpp
-    detector/YOLOv5/src/YOLOv5Detector.cpp
-    detector/YOLOv5/src/YOLOv8Detector.cpp
+    detector/yolo/src/YOLOv5Detector.cpp
+    detector/yolo/src/YOLOv8Detector.cpp
 
     tracker/deepsort/src/FeatureTensor.cpp
     tracker/deepsort/src/model.cpp
@@ -98,8 +98,8 @@ add_executable(test_detector
 
     detector/src/detector_utils.cpp
     detector/src/DetectorFactory.cpp
-    detector/YOLOv5/src/YOLOv5Detector.cpp
-    detector/YOLOv5/src/YOLOv8Detector.cpp
+    detector/yolo/src/YOLOv5Detector.cpp
+    detector/yolo/src/YOLOv8Detector.cpp
 
     test_detector.cpp)
 

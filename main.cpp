@@ -139,7 +139,12 @@ int main(int argc, char *argv[])
 
     std::shared_ptr<detector::IDetector> detector =
         detector::DetectorFactory::create(cfg->detector.type);
-    detector->init();
+    if (!detector->init()) {
+        std::cerr << "Detector initialization failed, exiting." << std::endl;
+        delete mytracker;
+        delete bytetracker;
+        return -1;
+    }
 
     const auto& input_cfg = cfg->input;
     const auto& output_cfg = cfg->output;
