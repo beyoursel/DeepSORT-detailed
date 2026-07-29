@@ -1,6 +1,6 @@
 # DeepSORT / ByteTrack Multi-Object Tracking (C++)
 
-基于 C++ 的多目标跟踪项目，检测器支持 **YOLOv5 / YOLOv8 ONNX**，跟踪器支持 **DeepSORT / ByteTrack**，推理后端通过统一的 `IBackend` 抽象支持 **ONNXRuntime CPU / GPU** 切换。
+基于 C++ 的多目标跟踪项目，检测器支持 **YOLOv5 / YOLOv8 / YOLOv26 ONNX**，跟踪器支持 **DeepSORT / ByteTrack**，推理后端通过统一的 `IBackend` 抽象支持 **ONNXRuntime CPU / GPU** 切换。检测器（`IDetector`）与跟踪器（`ITracker`）均为接口 + 工厂模式，可按需扩展。
 
 ---
 
@@ -8,9 +8,10 @@
 
 - **配置驱动**：模型路径、输入源、推理后端、跟踪算法参数全部通过 `config/config.yaml` 配置，无需改代码即可切换。
 - **多后端支持**：ONNXRuntime CPU / GPU 可切换，且支持“全局默认 + 模块独立覆盖”。
-- **多检测网络**：已接入 YOLOv5 / YOLOv8，后续可按 `DetectorFactory` 扩展 YOLOv9 / YOLOv10 等。
-- **多跟踪器**：DeepSORT / ByteTrack 一键切换。
+- **多检测网络**：已接入 YOLOv5 / YOLOv8 / YOLOv26（YOLOv9 / v10 / v11 复用 YOLOv8 后处理），可按 `DetectorFactory` 继续扩展。
+- **多跟踪器**：DeepSORT / ByteTrack 一键切换，统一 `ITracker` 接口，可按 `TrackerFactory` 扩展。
 - **可视化**：同时显示绿色检测框（类别 + 置信度）和红色跟踪框（跟踪 ID）。
+- **Headless 部署**：支持无显示环境运行（关闭预览窗口），并可输出 MOTChallenge 格式跟踪结果文件。
 - **耗时打印**：终端输出 `det_pre / det_infer / det_post / reid / track` 各阶段耗时，便于性能分析。
 
 ---
@@ -19,32 +20,34 @@
 
 ```
 .
-├── backend/               # 推理后端抽象
-│   ├── include/IBackend.h
-│   ├── include/BackendFactory.h
-│   └── src/ONNXRuntimeBackend.cpp
-├── config/                # 配置解析
-│   ├── AppConfig.cpp
-│   └── config.yaml
-├── detector/              # 检测器
+├── backend/               # 推理后端抽象（IBackend + BackendFactory）
+│   ├── include/
+│   └── src/
+├── config/                # 配置解析（AppConfig + config.yaml）
+├── detector/              # 检测器（IDetector + DetectorFactory）
 │   ├── include/
 │   ├── src/
-│   └── YOLOv5/            # YOLOv5 / YOLOv8 实现
-├── tracker/               # 跟踪器
+│   └── yolo/              # YOLOv5 / YOLOv8 / YOLOv26 实现
+├── tracker/               # 跟踪器（ITracker + TrackerFactory）
 │   ├── include/           # ITracker 统一接口 + TrackerFactory
-│   ├── deepsort/
-│   └── bytetrack/
+│   ├── src/
+│   ├── deepsort/          # DeepSORT 实现 + DeepSORTAdapter
+│   └── bytetrack/         # ByteTrack 实现 + ByteTrackAdapter
 ├── lib/                     # 第三方库
 │   ├── onnxruntime-linux-x64-1.12.1/       # CPU 库
 │   └── onnxruntime-linux-x64-gpu-1.16.3/   # GPU 库
 ├── models/                  # 模型文件
 │   ├── yolov5s.onnx
 │   ├── yolov8s.onnx
+│   ├── yolo26s.onnx
 │   └── feature.onnx       # DeepSORT ReID
 ├── scripts/
 │   └── extract_frame.py   # 视频抽帧脚本
+├── utils/
+│   └── Timer.h            # 耗时统计工具
 ├── main.cpp                 # 视频跟踪主程序
 ├── test_detector.cpp        # 单帧检测测试程序
+├── .clang-format            # 代码风格配置
 └── CMakeLists.txt
 ```
 
@@ -97,7 +100,7 @@ tar -xzf onnxruntime-linux-x64-gpu-1.16.3.tgz -C lib/
 ## 4. 编译
 
 ```bash
-cd /media/taole/mydisk/DL_PROJECT/DeepSORT-detailed
+cd YOLO-Tracker   # 项目根目录
 mkdir -p build && cd build
 
 # GPU 后端（默认）
@@ -113,6 +116,18 @@ make -j$(nproc)
 
 - `./build/DeepSORT`：视频跟踪主程序
 - `./build/test_detector`：单帧检测测试程序
+
+### 4.1 代码风格
+
+项目使用 clang-format 统一代码风格，配置文件为根目录的 `.clang-format`（Google 风格：2 空格缩进、行宽 80、include 自动排序）。提交代码前请格式化改动过的文件：
+
+```bash
+clang-format -i path/to/file.cpp
+
+# 或全量格式化
+find . \( -name "*.cpp" -o -name "*.h" \) \
+    -not -path "./build/*" -not -path "./lib/*" | xargs clang-format -i
+```
 
 ---
 
@@ -144,7 +159,7 @@ output:
 
 # 检测器配置
 detector:
-  type: "yolov8"                # yolov5 | yolov8
+  type: "yolov8"               # yolov5 | yolov8 | yolov26
   backend: "onnxruntime_gpu"  # 不写则继承全局 backend.type
   model_path: "./models/yolov8s.onnx"
   input_width: 640
@@ -199,9 +214,12 @@ tracker:
 
 ```yaml
 detector:
-  type: "yolov5"     # 或 yolov8
+  type: "yolov5"     # yolov5 | yolov8 | yolov26
   model_path: "./models/yolov5s.onnx"
 ```
+
+> - `yolov8` 类型同时兼容 YOLOv9 / v10 / v11（相同的 ONNX 输出格式与后处理）。
+> - `yolov26` 对应 **end2end** 导出的 ONNX：模型内部已完成 NMS，输出为 `(1, 300, 6)`，每行 `[x1, y1, x2, y2, conf, class_id]`。
 
 ### 5.4 Headless 模式与结构化结果输出
 
@@ -223,7 +241,7 @@ output:
 ### 6.1 视频跟踪
 
 ```bash
-cd /media/taole/mydisk/DL_PROJECT/DeepSORT-detailed
+cd YOLO-Tracker   # 项目根目录
 ./build/DeepSORT
 # 或指定其他配置文件
 ./build/DeepSORT ./config/test_deepsort.yaml
@@ -282,7 +300,7 @@ cd /media/taole/mydisk/DL_PROJECT/DeepSORT-detailed
 
 ---
 
-## 8. 导出 YOLOv8 ONNX 模型
+## 8. 导出 YOLO ONNX 模型
 
 使用 Ultralytics 官方仓库：
 
@@ -292,6 +310,12 @@ yolo export model=yolov8s.pt format=onnx opset=12 imgsz=640
 ```
 
 导出后的 `yolov8s.onnx` 直接放入 `models/` 目录即可使用。
+
+### 8.1 关于 YOLOv26
+
+`detector.type: "yolov26"` 要求 **end2end** 导出的 ONNX（模型内部完成 NMS），输出 shape 为 `(1, 300, 6)`，每行 `[x1, y1, x2, y2, confidence, class_id]`。
+
+如果模型是按普通方式导出的（输出 `(1, 84, 8400)`，与 YOLOv8 格式一致），无需重新导出，直接把 `detector.type` 设为 `yolov8` 即可——它会走 C++ 侧的手动 NMS 后处理。
 
 ---
 
