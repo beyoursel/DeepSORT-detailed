@@ -3,231 +3,198 @@
     @Author      : shaoshengsong
     @Date        : 2022-09-23 02:52:22
 */
+#include "AppConfig.h"
+#include "DetectorFactory.h"
+#include "ITracker.h"
+#include "Timer.h"
+#include "TrackerFactory.h"
 #include <fstream>
-#include <sstream>
+#include <opencv2/dnn.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/opencv.hpp>
-#include <opencv2/dnn.hpp>
-#include "DetectorFactory.h"
-#include "AppConfig.h"
-
-#include "FeatureTensor.h"
-#include "BYTETracker.h" //bytetrack
-#include "tracker.h"//deepsort
-#include "Timer.h"
+#include <sstream>
 
 #include <chrono>
+#include <memory>
 
-void get_detections(DETECTBOX box,float confidence,DETECTIONS& d)
-{
-    DETECTION_ROW tmpRow;
-    tmpRow.tlwh = box;//DETECTBOX(x, y, w, h);
-
-    tmpRow.confidence = confidence;
-    d.push_back(tmpRow);
+// Write one MOTChallenge-format line:
+// <frame>,<id>,<x>,<y>,<w>,<h>,<conf>,-1,-1,-1
+static void write_mot_line(std::ostream* mot_out, int frame_id, int track_id,
+                           const cv::Rect_<float>& box) {
+  if (!mot_out) return;
+  *mot_out << frame_id << "," << track_id << "," << box.x << "," << box.y << ","
+           << box.width << "," << box.height << ",1,-1,-1,-1\n";
 }
 
-
-void test_deepsort(cv::Mat& frame, std::vector<detect_result>& results, tracker& mytracker)
-{
-    ScopedTimer timer("track");
-    std::vector<detect_result> objects;
-    DETECTIONS detections;
-
-    // 1) 先画检测框（绿色，含类别置信度）
-    for (const detect_result& dr : results)
-    {
-        if (dr.classId == 0) // person
-        {
-            objects.push_back(dr);
-            get_detections(DETECTBOX(dr.box.x, dr.box.y, dr.box.width, dr.box.height),
-                           dr.confidence, detections);
-
-            std::string det_label = cv::format("person:%.2f", dr.confidence);
-            cv::rectangle(frame, dr.box, cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
-            cv::putText(frame, det_label,
-                        cv::Point(dr.box.x, dr.box.y - 5),
-                        cv::FONT_HERSHEY_SIMPLEX, 0.5,
-                        cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
-        }
-    }
-
-    if (FeatureTensor::getInstance()->getRectsFeature(frame, detections))
-    {
-        mytracker.predict();
-        mytracker.update(detections);
-
-        // 2) 再画跟踪框（红色，含 ID）
-        for (Track& track : mytracker.tracks) {
-            if (!track.is_confirmed() || track.time_since_update > 1) continue;
-            DETECTBOX tmp = track.to_tlwh();
-            cv::Rect rect(tmp(0), tmp(1), tmp(2), tmp(3));
-            cv::rectangle(frame, rect, cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
-            std::string label = cv::format("ID:%d", track.track_id);
-            cv::putText(frame, label, cv::Point(rect.x, rect.y - 5),
-                        cv::FONT_HERSHEY_SIMPLEX, 0.6,
-                        cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
-        }
-    }
+// Draw a green detection box (class + confidence).
+static void draw_detection(cv::Mat& frame, const detect_result& dr,
+                           const char* class_name) {
+  std::string det_label = cv::format("%s:%.2f", class_name, dr.confidence);
+  cv::rectangle(frame, dr.box, cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
+  cv::putText(frame, det_label, cv::Point(dr.box.x, dr.box.y - 5),
+              cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1,
+              cv::LINE_AA);
 }
 
-
-void test_bytetrack(cv::Mat& frame, std::vector<detect_result>& results, BYTETracker& tracker)
-{
-    ScopedTimer timer("track");
-    std::vector<detect_result> objects;
-
-    // 1) 先画检测框（绿色，含类别置信度）
-    for (const detect_result& dr : results)
-    {
-        if (dr.classId == 0) // person
-        {
-            objects.push_back(dr);
-            std::string det_label = cv::format("person:%.2f", dr.confidence);
-            cv::rectangle(frame, dr.box, cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
-            cv::putText(frame, det_label,
-                        cv::Point(dr.box.x, dr.box.y - 5),
-                        cv::FONT_HERSHEY_SIMPLEX, 0.5,
-                        cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
-        }
-    }
-
-    std::vector<STrack> output_stracks = tracker.update(objects);
-
-    // 2) 再画跟踪框（红色，含 ID）
-    for (size_t i = 0; i < output_stracks.size(); i++)
-    {
-        std::vector<float> tlwh = output_stracks[i].tlwh;
-        bool vertical = tlwh[2] / tlwh[3] > 1.6;
-        if (tlwh[2] * tlwh[3] > 20 && !vertical)
-        {
-            cv::Rect rect(tlwh[0], tlwh[1], tlwh[2], tlwh[3]);
-            cv::rectangle(frame, rect, cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
-            std::string label = cv::format("ID:%d", output_stracks[i].track_id);
-            cv::putText(frame, label, cv::Point(tlwh[0], tlwh[1] - 5),
-                        cv::FONT_HERSHEY_SIMPLEX, 0.6,
-                        cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
-        }
-    }
+// Draw a red tracking box (track ID).
+static void draw_track(cv::Mat& frame, const TrackResult& t) {
+  cv::rectangle(frame, t.box, cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
+  std::string label = cv::format("ID:%d", t.track_id);
+  cv::putText(frame, label, cv::Point(t.box.x, t.box.y - 5),
+              cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 0, 255), 2,
+              cv::LINE_AA);
 }
 
-int main(int argc, char *argv[])
-{
-    std::string config_path = "./config/config.yaml";
-    if (argc > 1) {
-        config_path = argv[1];
+int main(int argc, char* argv[]) {
+  std::string config_path = "./config/config.yaml";
+  if (argc > 1) {
+    config_path = argv[1];
+  }
+
+  AppConfig* cfg = AppConfig::getInstance();
+  if (!cfg->load(config_path)) {
+    std::cerr << "Failed to load config from " << config_path << std::endl;
+    return -1;
+  }
+
+  std::unique_ptr<ITracker> tracker;
+  try {
+    tracker = TrackerFactory::create(cfg->tracker.type);
+  } catch (const std::exception& e) {
+    std::cerr << "Failed to create tracker: " << e.what() << std::endl;
+    return -1;
+  }
+
+  std::shared_ptr<detector::IDetector> detector;
+  try {
+    detector = detector::DetectorFactory::create(cfg->detector.type);
+  } catch (const std::exception& e) {
+    std::cerr << "Failed to create detector: " << e.what() << std::endl;
+    return -1;
+  }
+  if (!detector->init()) {
+    std::cerr << "Detector initialization failed, exiting." << std::endl;
+    return -1;
+  }
+
+  const auto& input_cfg = cfg->input;
+  const auto& output_cfg = cfg->output;
+
+  std::cout << "begin read video" << std::endl;
+  cv::VideoCapture capture(input_cfg.source);
+
+  if (!capture.isOpened()) {
+    printf("could not read this video file...\n");
+    return -1;
+  }
+  std::cout << "end read video" << std::endl;
+
+  std::vector<detect_result> results;
+  int num_frames = 0;
+
+  // Use input video's native size and fps for output to avoid resolution
+  // mismatch.
+  int input_fps = static_cast<int>(capture.get(cv::CAP_PROP_FPS));
+  int input_width = static_cast<int>(capture.get(cv::CAP_PROP_FRAME_WIDTH));
+  int input_height = static_cast<int>(capture.get(cv::CAP_PROP_FRAME_HEIGHT));
+  if (input_fps <= 0) input_fps = output_cfg.fps;
+  if (input_width <= 0) input_width = output_cfg.width;
+  if (input_height <= 0) input_height = output_cfg.height;
+
+  // MOT-format track result output (optional).
+  std::ofstream mot_file;
+  std::ostream* mot_out = nullptr;
+  if (!output_cfg.result.empty()) {
+    mot_file.open(output_cfg.result);
+    if (!mot_file.is_open()) {
+      std::cerr << "Failed to open result file: " << output_cfg.result
+                << std::endl;
+      return -1;
     }
+    mot_out = &mot_file;
+  }
 
-    AppConfig* cfg = AppConfig::getInstance();
-    if (!cfg->load(config_path)) {
-        std::cerr << "Failed to load config from " << config_path << std::endl;
-        return -1;
-    }
-
-    // Initialize tracker based on config
-    tracker* mytracker = nullptr;
-    BYTETracker* bytetracker = nullptr;
-
-    if (cfg->tracker.type == "deepsort") {
-        mytracker = new tracker(cfg->deepsort);
-    } else if (cfg->tracker.type == "bytetrack") {
-        bytetracker = new BYTETracker(cfg->bytetrack);
-    } else {
-        std::cerr << "Unknown tracker type: " << cfg->tracker.type << std::endl;
-        return -1;
-    }
-
-    std::shared_ptr<detector::IDetector> detector =
-        detector::DetectorFactory::create(cfg->detector.type);
-    if (!detector->init()) {
-        std::cerr << "Detector initialization failed, exiting." << std::endl;
-        delete mytracker;
-        delete bytetracker;
-        return -1;
-    }
-
-    const auto& input_cfg = cfg->input;
-    const auto& output_cfg = cfg->output;
-
-    std::cout << "begin read video" << std::endl;
-    cv::VideoCapture capture(input_cfg.source);
-
-    if (!capture.isOpened()) {
-        printf("could not read this video file...\n");
-        return -1;
-    }
-    std::cout << "end read video" << std::endl;
-
-    std::vector<detect_result> results;
-    int num_frames = 0;
-
-    // Use input video's native size and fps for output to avoid resolution mismatch.
-    int input_fps = static_cast<int>(capture.get(cv::CAP_PROP_FPS));
-    int input_width = static_cast<int>(capture.get(cv::CAP_PROP_FRAME_WIDTH));
-    int input_height = static_cast<int>(capture.get(cv::CAP_PROP_FRAME_HEIGHT));
-    if (input_fps <= 0) input_fps = output_cfg.fps;
-    if (input_width <= 0) input_width = output_cfg.width;
-    if (input_height <= 0) input_height = output_cfg.height;
-
-    int fourcc = cv::VideoWriter::fourcc(
-        output_cfg.fourcc[0], output_cfg.fourcc[1],
-        output_cfg.fourcc[2], output_cfg.fourcc[3]);
-    cv::VideoWriter video(output_cfg.video, fourcc, input_fps,
-                          cv::Size(input_width, input_height));
+  // Video writer is optional: empty output.video disables it.
+  cv::VideoWriter video;
+  if (!output_cfg.video.empty()) {
+    const std::string fourcc_str = (output_cfg.fourcc.size() >= 4)
+                                       ? output_cfg.fourcc
+                                       : std::string("MJPG");
+    int fourcc = cv::VideoWriter::fourcc(fourcc_str[0], fourcc_str[1],
+                                         fourcc_str[2], fourcc_str[3]);
+    video.open(output_cfg.video, fourcc, input_fps,
+               cv::Size(input_width, input_height));
     if (!video.isOpened()) {
-        std::cerr << "Failed to open video writer: " << output_cfg.video << std::endl;
-        return -1;
+      std::cerr << "Failed to open video writer: " << output_cfg.video
+                << std::endl;
+      return -1;
+    }
+  }
+
+  while (true) {
+    cv::Mat frame;
+
+    if (!capture.read(frame)) {
+      std::cout << "\n Cannot read the video file. please check your video.\n";
+      break;
     }
 
-    while (true)
-    {
-        cv::Mat frame;
+    num_frames++;
+    try {
+      auto det_start = std::chrono::steady_clock::now();
+      detector->detect(frame, results);
+      auto det_end = std::chrono::steady_clock::now();
+      double detect_time = elapsed_ms(det_start, det_end);
 
-        if (!capture.read(frame))
+      // Track persons only (historical behavior); draw green detection boxes.
+      std::vector<detect_result> objects;
+      for (const detect_result& dr : results) {
+        if (dr.classId == 0)  // person
         {
-            std::cout << "\n Cannot read the video file. please check your video.\n";
-            break;
+          objects.push_back(dr);
+          draw_detection(frame, dr, "person");
         }
+      }
 
-        num_frames++;
-        auto det_start = std::chrono::steady_clock::now();
-        detector->detect(frame, results);
-        auto det_end = std::chrono::steady_clock::now();
-        double detect_time = elapsed_ms(det_start, det_end);
+      auto track_start = std::chrono::steady_clock::now();
+      std::vector<TrackResult> tracks = tracker->update(frame, objects);
+      auto track_end = std::chrono::steady_clock::now();
+      double track_time = elapsed_ms(track_start, track_end);
 
-        auto track_start = std::chrono::steady_clock::now();
-        if (cfg->tracker.type == "deepsort") {
-            test_deepsort(frame, results, *mytracker);
-        } else {
-            test_bytetrack(frame, results, *bytetracker);
-        }
-        auto track_end = std::chrono::steady_clock::now();
-        double track_time = elapsed_ms(track_start, track_end);
+      // Draw red tracking boxes and dump MOT results.
+      for (const TrackResult& t : tracks) {
+        draw_track(frame, t);
+        write_mot_line(mot_out, num_frames, t.track_id, t.box);
+      }
 
-        std::cout << "[FRAME] frame=" << num_frames
-                  << " dets=" << results.size()
-                  << " det_total=" << detect_time << "ms"
-                  << " track_total=" << track_time << "ms"
-                  << std::endl;
-
-        std::string window_title = "Detector: " + cfg->detector.type;
-        cv::imshow(window_title, frame);
-
-        video.write(frame);
-
-        if(cv::waitKey(30) == 27)
-        {
-            break;
-        }
-
-        results.clear();
+      std::cout << "[FRAME] frame=" << num_frames << " dets=" << results.size()
+                << " det_total=" << detect_time << "ms"
+                << " track_total=" << track_time << "ms" << std::endl;
+    } catch (const std::exception& e) {
+      std::cerr << "[ERROR] frame=" << num_frames << ": " << e.what()
+                << std::endl;
+      break;
     }
-    capture.release();
-    video.release();
+
+    if (output_cfg.show) {
+      std::string window_title = "Detector: " + cfg->detector.type;
+      cv::imshow(window_title, frame);
+      if (cv::waitKey(30) == 27) {
+        break;
+      }
+    }
+
+    if (video.isOpened()) {
+      video.write(frame);
+    }
+
+    results.clear();
+  }
+  capture.release();
+  video.release();
+  if (output_cfg.show) {
     cv::destroyAllWindows();
+  }
 
-    delete mytracker;
-    delete bytetracker;
-
-    return 0;
+  return 0;
 }

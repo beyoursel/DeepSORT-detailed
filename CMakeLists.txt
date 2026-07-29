@@ -35,6 +35,7 @@ include_directories(
     ${OpenCV_INCLUDE_DIRS}/include
     ${CMAKE_SOURCE_DIR}/utils
     ${CMAKE_SOURCE_DIR}/backend/include
+    ${CMAKE_SOURCE_DIR}/tracker/include
     ${CMAKE_SOURCE_DIR}/tracker/deepsort/include
     ${CMAKE_SOURCE_DIR}/tracker/bytetrack/include
     ${CMAKE_SOURCE_DIR}/detector/include
@@ -60,6 +61,9 @@ add_executable(DeepSORT
     detector/yolo/src/YOLOv8Detector.cpp
     detector/yolo/src/YOLOv26Detector.cpp
 
+    tracker/src/TrackerFactory.cpp
+
+    tracker/deepsort/src/DeepSORTAdapter.cpp
     tracker/deepsort/src/FeatureTensor.cpp
     tracker/deepsort/src/model.cpp
     tracker/deepsort/src/kalmanfilter.cpp
@@ -70,6 +74,7 @@ add_executable(DeepSORT
     tracker/deepsort/src/munkres.cpp
     tracker/deepsort/src/hungarianoper.cpp
 
+    tracker/bytetrack/src/ByteTrackAdapter.cpp
     tracker/bytetrack/src/BytekalmanFilter.cpp
     tracker/bytetrack/src/BYTETracker.cpp
     tracker/bytetrack/src/lapjv.cpp

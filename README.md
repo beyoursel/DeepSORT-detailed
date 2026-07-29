@@ -31,6 +31,7 @@
 │   ├── src/
 │   └── YOLOv5/            # YOLOv5 / YOLOv8 实现
 ├── tracker/               # 跟踪器
+│   ├── include/           # ITracker 统一接口 + TrackerFactory
 │   ├── deepsort/
 │   └── bytetrack/
 ├── lib/                     # 第三方库
@@ -138,6 +139,8 @@ output:
   fps: 10
   width: 1920
   height: 1080
+  show: true        # 实时预览窗口；无显示环境设为 false
+  result: ""        # MOT 格式结果文件，留空不输出
 
 # 检测器配置
 detector:
@@ -199,6 +202,19 @@ detector:
   type: "yolov5"     # 或 yolov8
   model_path: "./models/yolov5s.onnx"
 ```
+
+### 5.4 Headless 模式与结构化结果输出
+
+在服务器 / 容器等无显示环境中运行时，关闭预览窗口并输出 MOT 格式结果：
+
+```yaml
+output:
+  show: false              # 不弹窗、不调用 imshow/waitKey
+  video: ""                # 可选：置空则不写视频文件
+  result: "results.txt"    # MOTChallenge 格式：<frame>,<id>,<x>,<y>,<w>,<h>,<conf>,-1,-1,-1
+```
+
+`result` 文件每行对应一个已确认的跟踪框，可直接交给下游系统或用于跟踪指标评测。
 
 ---
 
@@ -310,6 +326,12 @@ python3 scripts/extract_frame.py \
 3. 在 `config.yaml` 中设置 `detector.type` 即可切换。
 
 后端通过 `BackendFactory` 创建，新增推理框架（如 TensorRT、OpenVINO）只需实现 `IBackend` 接口并注册。
+
+跟踪器通过 `TrackerFactory` 创建，新增跟踪算法（如 OC-SORT、BoT-SORT）只需：
+
+1. 继承 `ITracker`（`tracker/include/ITracker.h`）实现 `update(frame, detections)`。
+2. 在 `TrackerFactory::create()` 中注册新类型。
+3. 在 `config.yaml` 中设置 `tracker.type` 即可切换。
 
 ---
 

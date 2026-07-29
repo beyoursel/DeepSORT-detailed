@@ -16,12 +16,14 @@ input:
 
 # 输出配置
 output:
-  video: "out.avi"
+  video: "out.avi"   # 置空字符串 "" 则不写视频（headless 场景）
   image: "out1.jpg"
   fourcc: "MJPG"
   fps: 10       # fallback fps when input video fps is unavailable
   width: 1920   # fallback width when input video width is unavailable
   height: 1080 # fallback height when input video height is unavailable
+  show: true    # 实时预览窗口；服务器/容器等无显示环境设为 false
+  result: ""    # MOT 格式跟踪结果输出文件（如 results.txt），留空则不输出
 
 # 检测器配置
 detector:
