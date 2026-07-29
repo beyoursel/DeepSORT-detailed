@@ -115,7 +115,6 @@ bool AppConfig::load(const std::string& yaml_path) {
 
     // bytetrack
     if (config["bytetrack"]) {
-      bytetrack.fps = getWithDefault(config["bytetrack"], "fps", 20);
       bytetrack.track_buffer =
           getWithDefault(config["bytetrack"], "track_buffer", 30);
       bytetrack.track_thresh =

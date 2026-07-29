@@ -8,6 +8,7 @@
 #include "ITracker.h"
 #include "Timer.h"
 #include "TrackerFactory.h"
+#include <cctype>
 #include <fstream>
 #include <opencv2/dnn.hpp>
 #include <opencv2/imgproc.hpp>
@@ -45,6 +46,134 @@ static void draw_track(cv::Mat& frame, const TrackResult& t) {
               cv::LINE_AA);
 }
 
+// Run one frame through the detect -> track pipeline, draw results and dump
+// MOT lines. Returns false on exception (caller should stop the loop).
+static bool process_frame(cv::Mat& frame,
+                          const std::shared_ptr<detector::IDetector>& detector,
+                          const std::unique_ptr<ITracker>& tracker,
+                          std::vector<detect_result>& results, int frame_id,
+                          std::ostream* mot_out) {
+  try {
+    auto det_start = std::chrono::steady_clock::now();
+    detector->detect(frame, results);
+    auto det_end = std::chrono::steady_clock::now();
+    double detect_time = elapsed_ms(det_start, det_end);
+
+    // Track persons only (historical behavior); draw green detection boxes.
+    std::vector<detect_result> objects;
+    for (const detect_result& dr : results) {
+      if (dr.classId == 0)  // person
+      {
+        objects.push_back(dr);
+        draw_detection(frame, dr, "person");
+      }
+    }
+
+    auto track_start = std::chrono::steady_clock::now();
+    std::vector<TrackResult> tracks = tracker->update(frame, objects);
+    auto track_end = std::chrono::steady_clock::now();
+    double track_time = elapsed_ms(track_start, track_end);
+
+    // Draw red tracking boxes and dump MOT results.
+    for (const TrackResult& t : tracks) {
+      draw_track(frame, t);
+      write_mot_line(mot_out, frame_id, t.track_id, t.box);
+    }
+
+    std::cout << "[FRAME] frame=" << frame_id << " dets=" << results.size()
+              << " det_total=" << detect_time << "ms"
+              << " track_total=" << track_time << "ms" << std::endl;
+  } catch (const std::exception& e) {
+    std::cerr << "[ERROR] frame=" << frame_id << ": " << e.what() << std::endl;
+    return false;
+  }
+  return true;
+}
+
+// Shared frame loop for video files and camera streams. Returns process exit
+// code.
+static int run_capture_loop(cv::VideoCapture& capture,
+                            const std::shared_ptr<detector::IDetector>& detector,
+                            const std::unique_ptr<ITracker>& tracker,
+                            const AppConfig* cfg, std::ostream* mot_out) {
+  const auto& output_cfg = cfg->output;
+
+  // Use input source's native size and fps for output to avoid resolution
+  // mismatch; fall back to configured values when the backend reports none
+  // (common for camera devices and network streams).
+  int input_fps = static_cast<int>(capture.get(cv::CAP_PROP_FPS));
+  int input_width = static_cast<int>(capture.get(cv::CAP_PROP_FRAME_WIDTH));
+  int input_height = static_cast<int>(capture.get(cv::CAP_PROP_FRAME_HEIGHT));
+  if (input_fps <= 0) input_fps = output_cfg.fps;
+  if (input_width <= 0) input_width = output_cfg.width;
+  if (input_height <= 0) input_height = output_cfg.height;
+
+  // Video writer is optional: empty output.video disables it.
+  cv::VideoWriter video;
+  if (!output_cfg.video.empty()) {
+    const std::string fourcc_str =
+        (output_cfg.fourcc.size() >= 4) ? output_cfg.fourcc : std::string("MJPG");
+    int fourcc = cv::VideoWriter::fourcc(fourcc_str[0], fourcc_str[1],
+                                         fourcc_str[2], fourcc_str[3]);
+    video.open(output_cfg.video, fourcc, input_fps,
+               cv::Size(input_width, input_height));
+    if (!video.isOpened()) {
+      std::cerr << "Failed to open video writer: " << output_cfg.video
+                << std::endl;
+      return -1;
+    }
+  }
+
+  std::vector<detect_result> results;
+  int num_frames = 0;
+  while (true) {
+    cv::Mat frame;
+
+    if (!capture.read(frame)) {
+      std::cout << "\n Cannot read frame from source, stopping.\n";
+      break;
+    }
+
+    num_frames++;
+    if (!process_frame(frame, detector, tracker, results, num_frames,
+                       mot_out)) {
+      break;
+    }
+
+    if (output_cfg.show) {
+      std::string window_title = "Detector: " + cfg->detector.type;
+      cv::imshow(window_title, frame);
+      if (cv::waitKey(30) == 27) {
+        break;
+      }
+    }
+
+    if (video.isOpened()) {
+      video.write(frame);
+    }
+
+    results.clear();
+  }
+  capture.release();
+  video.release();
+  if (output_cfg.show) {
+    cv::destroyAllWindows();
+  }
+
+  return 0;
+}
+
+// A pure-digit source string (e.g. "0") is a camera device index; anything
+// else (file path, rtsp://...) is opened as a string.
+static bool parse_device_index(const std::string& source, int& index) {
+  if (source.empty()) return false;
+  for (char c : source) {
+    if (!std::isdigit(static_cast<unsigned char>(c))) return false;
+  }
+  index = std::stoi(source);
+  return true;
+}
+
 int main(int argc, char* argv[]) {
   std::string config_path = "./config/config.yaml";
   if (argc > 1) {
@@ -80,27 +209,6 @@ int main(int argc, char* argv[]) {
   const auto& input_cfg = cfg->input;
   const auto& output_cfg = cfg->output;
 
-  std::cout << "begin read video" << std::endl;
-  cv::VideoCapture capture(input_cfg.source);
-
-  if (!capture.isOpened()) {
-    printf("could not read this video file...\n");
-    return -1;
-  }
-  std::cout << "end read video" << std::endl;
-
-  std::vector<detect_result> results;
-  int num_frames = 0;
-
-  // Use input video's native size and fps for output to avoid resolution
-  // mismatch.
-  int input_fps = static_cast<int>(capture.get(cv::CAP_PROP_FPS));
-  int input_width = static_cast<int>(capture.get(cv::CAP_PROP_FRAME_WIDTH));
-  int input_height = static_cast<int>(capture.get(cv::CAP_PROP_FRAME_HEIGHT));
-  if (input_fps <= 0) input_fps = output_cfg.fps;
-  if (input_width <= 0) input_width = output_cfg.width;
-  if (input_height <= 0) input_height = output_cfg.height;
-
   // MOT-format track result output (optional).
   std::ofstream mot_file;
   std::ostream* mot_out = nullptr;
@@ -114,87 +222,51 @@ int main(int argc, char* argv[]) {
     mot_out = &mot_file;
   }
 
-  // Video writer is optional: empty output.video disables it.
-  cv::VideoWriter video;
-  if (!output_cfg.video.empty()) {
-    const std::string fourcc_str = (output_cfg.fourcc.size() >= 4)
-                                       ? output_cfg.fourcc
-                                       : std::string("MJPG");
-    int fourcc = cv::VideoWriter::fourcc(fourcc_str[0], fourcc_str[1],
-                                         fourcc_str[2], fourcc_str[3]);
-    video.open(output_cfg.video, fourcc, input_fps,
-               cv::Size(input_width, input_height));
-    if (!video.isOpened()) {
-      std::cerr << "Failed to open video writer: " << output_cfg.video
+  if (input_cfg.type == "image") {
+    // Single-image mode: detect + track once, save and/or show the result.
+    cv::Mat frame = cv::imread(input_cfg.source);
+    if (frame.empty()) {
+      std::cerr << "could not read this image file: " << input_cfg.source
                 << std::endl;
       return -1;
     }
-  }
 
-  while (true) {
-    cv::Mat frame;
+    std::vector<detect_result> results;
+    process_frame(frame, detector, tracker, results, 1, mot_out);
 
-    if (!capture.read(frame)) {
-      std::cout << "\n Cannot read the video file. please check your video.\n";
-      break;
+    if (!output_cfg.image.empty()) {
+      cv::imwrite(output_cfg.image, frame);
     }
-
-    num_frames++;
-    try {
-      auto det_start = std::chrono::steady_clock::now();
-      detector->detect(frame, results);
-      auto det_end = std::chrono::steady_clock::now();
-      double detect_time = elapsed_ms(det_start, det_end);
-
-      // Track persons only (historical behavior); draw green detection boxes.
-      std::vector<detect_result> objects;
-      for (const detect_result& dr : results) {
-        if (dr.classId == 0)  // person
-        {
-          objects.push_back(dr);
-          draw_detection(frame, dr, "person");
-        }
-      }
-
-      auto track_start = std::chrono::steady_clock::now();
-      std::vector<TrackResult> tracks = tracker->update(frame, objects);
-      auto track_end = std::chrono::steady_clock::now();
-      double track_time = elapsed_ms(track_start, track_end);
-
-      // Draw red tracking boxes and dump MOT results.
-      for (const TrackResult& t : tracks) {
-        draw_track(frame, t);
-        write_mot_line(mot_out, num_frames, t.track_id, t.box);
-      }
-
-      std::cout << "[FRAME] frame=" << num_frames << " dets=" << results.size()
-                << " det_total=" << detect_time << "ms"
-                << " track_total=" << track_time << "ms" << std::endl;
-    } catch (const std::exception& e) {
-      std::cerr << "[ERROR] frame=" << num_frames << ": " << e.what()
-                << std::endl;
-      break;
-    }
-
     if (output_cfg.show) {
       std::string window_title = "Detector: " + cfg->detector.type;
       cv::imshow(window_title, frame);
-      if (cv::waitKey(30) == 27) {
-        break;
-      }
+      cv::waitKey(0);
+      cv::destroyAllWindows();
     }
-
-    if (video.isOpened()) {
-      video.write(frame);
-    }
-
-    results.clear();
-  }
-  capture.release();
-  video.release();
-  if (output_cfg.show) {
-    cv::destroyAllWindows();
+    return 0;
   }
 
-  return 0;
+  cv::VideoCapture capture;
+  if (input_cfg.type == "camera") {
+    int device_index = 0;
+    if (parse_device_index(input_cfg.source, device_index)) {
+      capture.open(device_index);
+    } else {
+      capture.open(input_cfg.source);  // network stream URL
+    }
+  } else if (input_cfg.type == "video") {
+    capture.open(input_cfg.source);
+  } else {
+    std::cerr << "Unsupported input.type: \"" << input_cfg.type
+              << "\" (expected: video | image | camera)" << std::endl;
+    return -1;
+  }
+
+  if (!capture.isOpened()) {
+    std::cerr << "could not open input source: " << input_cfg.source
+              << std::endl;
+    return -1;
+  }
+
+  return run_capture_loop(capture, detector, tracker, cfg, mot_out);
 }

@@ -60,7 +60,7 @@ void NearNeighborDisMetric::partial_fit(std::vector<TRACKER_DATA>& tid_feats,
           } else {
             newSampleFeatures.block(0, 0, this->budget - addSize, feature_dim) =
                 samples[track_id]
-                    .block(addSize - 1, 0, this->budget - addSize, feature_dim)
+                    .block(addSize, 0, this->budget - addSize, feature_dim)
                     .eval();
             newSampleFeatures.block(this->budget - addSize, 0, addSize,
                                     feature_dim) = newFeatOne;
@@ -73,7 +73,7 @@ void NearNeighborDisMetric::partial_fit(std::vector<TRACKER_DATA>& tid_feats,
           } else {
             samples[track_id].block(0, 0, this->budget - addSize, feature_dim) =
                 samples[track_id]
-                    .block(addSize - 1, 0, this->budget - addSize, feature_dim)
+                    .block(addSize, 0, this->budget - addSize, feature_dim)
                     .eval();
             samples[track_id].block(this->budget - addSize, 0, addSize,
                                     feature_dim) = newFeatOne;
@@ -111,7 +111,7 @@ Eigen::VectorXf NearNeighborDisMetric::_nncosine_distance(const FEATURESS& x,
 Eigen::VectorXf NearNeighborDisMetric::_nneuclidean_distance(
     const FEATURESS& x, const FEATURESS& y) {
   MatrixXf distances = _pdist(x, y);
-  VectorXf res = distances.colwise().maxCoeff().transpose();
+  VectorXf res = distances.colwise().minCoeff().transpose();
   res = res.array().max(VectorXf::Zero(res.rows()).array());
   return res;
 }
@@ -132,9 +132,11 @@ Eigen::MatrixXf NearNeighborDisMetric::_pdist(const FEATURESS& x,
 Eigen::MatrixXf NearNeighborDisMetric::_cosine_distance(
     const FEATURESS& a, const FEATURESS& b, bool data_is_normalized) {
   if (data_is_normalized == true) {
-    // undo:
-    assert(false);
+    return 1. - (a * b.transpose()).array();
   }
-  MatrixXf res = 1. - (a * b.transpose()).array();
-  return res;
+  // L2-normalize each row first so the distance is a true cosine distance
+  // even when the feature model does not output unit vectors.
+  FEATURESS an = a.rowwise().normalized();
+  FEATURESS bn = b.rowwise().normalized();
+  return 1. - (an * bn.transpose()).array();
 }

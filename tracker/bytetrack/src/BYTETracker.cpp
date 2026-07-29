@@ -7,7 +7,8 @@ BYTETracker::BYTETracker(const ByteTrackConfig& cfg) {
   match_thresh = cfg.match_thresh;
 
   frame_id = 0;
-  max_time_lost = int(cfg.fps / 30.0 * cfg.track_buffer);
+  // track_buffer is a plain frame count (same semantics as DeepSORT max_age).
+  max_time_lost = cfg.track_buffer;
 }
 
 BYTETracker::~BYTETracker() {}

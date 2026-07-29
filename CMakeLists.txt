@@ -1,10 +1,18 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(DeepSORT LANGUAGES CXX)
+project(yolo_tracker LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Default to Release (-O3) when no build type is given; an empty build type
+# means no optimization, which severely slows down Eigen and the trackers.
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release RelWithDebInfo MinSizeRel)
+endif()
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 
 find_package (Eigen3 3.3 REQUIRED NO_MODULE)
@@ -50,7 +58,7 @@ set(BACKEND_SOURCES
     backend/src/ONNXRuntimeBackend.cpp
 )
 
-add_executable(DeepSORT
+add_executable(YoloTracker
     config/AppConfig.cpp
 
     ${BACKEND_SOURCES}
@@ -83,7 +91,7 @@ add_executable(DeepSORT
 
     main.cpp)
 
-target_link_libraries(DeepSORT PRIVATE
+target_link_libraries(YoloTracker PRIVATE
     onnxruntime
     ${OpenCV_LIBS}
     Eigen3::Eigen
@@ -91,7 +99,7 @@ target_link_libraries(DeepSORT PRIVATE
 
 # Set RPATH so the executable finds libonnxruntime.so and its provider libraries at runtime.
 # Use $ORIGIN relative paths so the project is relocatable.
-set_target_properties(DeepSORT PROPERTIES
+set_target_properties(YoloTracker PROPERTIES
     BUILD_RPATH "${ONNXRUNTIME_RPATH}"
     INSTALL_RPATH "${ONNXRUNTIME_RPATH}"
 )

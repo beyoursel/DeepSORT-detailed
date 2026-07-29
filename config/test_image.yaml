@@ -1,4 +1,4 @@
-# DeepSORT 测试配置（GPU 后端）
+# 图片输入测试配置（GPU 后端）
 
 backend:
   type: "onnxruntime_gpu"
@@ -8,16 +8,18 @@ dataset:
   coco_labels: "./coco_80_labels_list.txt"
 
 input:
-  source: "./test_video.avi"
-  type: "video"
+  source: "./test_frame.jpg"
+  type: "image"
 
 output:
-  video: "out_deepsort.avi"
-  image: "out1.jpg"
+  video: ""            # 图片模式不写视频
+  image: "out_image.jpg"
   fourcc: "MJPG"
   fps: 10
   width: 1920
   height: 1080
+  show: false          # headless 验证；本地有显示环境可改 true
+  result: ""
 
 detector:
   type: "yolov8"
@@ -29,7 +31,7 @@ detector:
   nms_threshold: 0.4
 
 tracker:
-  type: "deepsort"  # 切换到 deepsort
+  type: "deepsort"
 
 deepsort:
   feature_model_path: "./models/feature.onnx"

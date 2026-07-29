@@ -145,8 +145,8 @@ backend:
 dataset:
   coco_labels: "./coco_80_labels_list.txt"
 input:
-  source: "./test_video.avi"   # 视频或图片路径
-  type: "video"                # video | image
+  source: "./test_video.avi"   # video/image: 文件路径；camera: 设备号 "0" 或流地址
+  type: "video"                # video | image | camera
 output:
   video: "out.avi"
   image: "out1.jpg"
@@ -184,8 +184,7 @@ deepsort:
 
 # ByteTrack 配置
 bytetrack:
-  fps: 20
-  track_buffer: 30
+  track_buffer: 30   # 轨迹丢失后保留的帧数（与 DeepSORT max_age 同语义）
   track_thresh: 0.5
   high_thresh: 0.6
   match_thresh: 0.8

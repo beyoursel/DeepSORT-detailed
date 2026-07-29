@@ -1,59 +1,58 @@
 # DeepSORT / ByteTrack 运行配置
 
-# 推理后端配置
+# 推理后端配置（全局默认，可被 detector.backend / deepsort.backend 单独覆盖）
 backend:
-  type: "onnxruntime_gpu"   # onnxruntime_cpu | onnxruntime_gpu
-  device_id: 0
+  type: "onnxruntime_gpu"   # onnxruntime_cpu | onnxruntime_gpu（GPU 库也含 CPU EP）
+  device_id: 0              # GPU 设备号，仅 GPU 后端有效
 
-# 类别标签文件路径
+# 类别标签文件路径（COCO 80 类，每行一个类别名，用于画框标签）
 dataset:
   coco_labels: "./coco_80_labels_list.txt"
 
 # 输入源
 input:
-  source: "./test_video.avi" # "./test_video.avi" | "./test_frame.jpg"
-  type: "video"  # video | image
+  source: "./test_video.avi" # video/image: 文件路径；camera: 设备号 "0" 或流地址 "rtsp://..."
+  type: "video"  # video | image | camera
 
 # 输出配置
 output:
-  video: "out.avi"   # 置空字符串 "" 则不写视频（headless 场景）
-  image: "out1.jpg"
-  fourcc: "MJPG"
-  fps: 10       # fallback fps when input video fps is unavailable
-  width: 1920   # fallback width when input video width is unavailable
-  height: 1080 # fallback height when input video height is unavailable
+  video: "out.avi"   # 跟踪结果视频输出路径，置空 "" 则不写视频（headless 场景）；image 模式下忽略
+  image: "out1.jpg"  # image 模式的结果图保存路径
+  fourcc: "MJPG"     # 输出视频编码（四字符，如 MJPG / mp4v）
+  fps: 10       # fallback fps：输入源 fps 取不到时（如部分摄像头/流）写输出视频用
+  width: 1920   # fallback width：输入源宽度取不到时用
+  height: 1080  # fallback height：输入源高度取不到时用
   show: true    # 实时预览窗口；服务器/容器等无显示环境设为 false
   result: ""    # MOT 格式跟踪结果输出文件（如 results.txt），留空则不输出
 
 # 检测器配置
 detector:
-  type: "yolov26"           # yolov5 | yolov8 | yolo26
-  backend: "onnxruntime_gpu" # optional override for global backend
-  model_path: "./models/yolo26s.onnx"
-  input_width: 640
-  input_height: 640
-  confidence_threshold: 0.25
-  nms_threshold: 0.4
+  type: "yolov26"           # yolov5 | yolov8（兼容 v9~v11，输出格式相同）| yolov26
+  backend: "onnxruntime_gpu" # 可选，覆盖全局 backend.type；不写则继承全局
+  model_path: "./models/yolo26s.onnx" # 检测模型 ONNX 路径
+  input_width: 640          # 模型输入宽度（letterbox 缩放目标）
+  input_height: 640         # 模型输入高度
+  confidence_threshold: 0.25 # 检测置信度阈值，低于则丢弃；漏检多可降到 0.15~0.2
+  nms_threshold: 0.4         # NMS 的 IoU 阈值（yolov26 内置 NMS，此项对其无效）
 
 # 跟踪器选择
 tracker:
-  type: "bytetrack"  # deepsort | bytetrack
+  type: "deepsort"  # deepsort | bytetrack
 
 # DeepSORT 配置
 deepsort:
-  feature_model_path: "./models/feature.onnx"
-  backend: "onnxruntime_gpu" # optional override for global backend
-  feature_dim: 512
-  max_cosine_distance: 0.2
-  nn_budget: 100
-  max_iou_distance: 0.7
-  max_age: 30
-  n_init: 3
+  feature_model_path: "./models/feature.onnx" # ReID 外观特征模型 ONNX 路径
+  backend: "onnxruntime_gpu" # 可选，覆盖全局 backend.type；不写则继承全局
+  feature_dim: 512           # 特征维度，必须与模型输出一致
+  max_cosine_distance: 0.2   # 外观匹配余弦距离门限：调小→ID switch 减少但易断轨；调大→相反
+  nn_budget: 100             # 每条轨迹保留的外观特征样本数上限（滑动窗口）
+  max_iou_distance: 0.7      # 级联匹配后 IOU 兜底匹配的 IoU 距离门限（1 - IoU）
+  max_age: 30                # 轨迹连续多少帧未匹配则删除（帧数）；遮挡久可调到 50~70
+  n_init: 3                  # 新轨迹连续命中多少帧才确认输出；调小确认更快但假轨迹增多
 
 # ByteTrack 配置
 bytetrack:
-  fps: 20
-  track_buffer: 30
-  track_thresh: 0.5
-  high_thresh: 0.6
-  match_thresh: 0.8
+  track_buffer: 30  # 轨迹丢失后保留的帧数（与 DeepSORT max_age 同语义）
+  track_thresh: 0.5 # 检测分数参与匹配的最低阈值，低于则直接丢弃；高分框第一轮匹配，低分框第二轮
+  high_thresh: 0.6  # 新轨迹激活的分数阈值，未匹配的高分框达到此值才新建轨迹
+  match_thresh: 0.8 # 第一轮匹配的 IoU 距离门限（1 - IoU）

@@ -26,8 +26,7 @@ struct DeepSORTConfig {
 };
 
 struct ByteTrackConfig {
-  int fps;
-  int track_buffer;
+  int track_buffer;  // frames a lost track is kept alive (like DeepSORT max_age)
   float track_thresh;
   float high_thresh;
   float match_thresh;
