@@ -45,7 +45,7 @@
 │   └── extract_frame.py   # 视频抽帧脚本
 ├── utils/
 │   └── Timer.h            # 耗时统计工具
-├── main.cpp                 # 视频跟踪主程序
+├── main.cpp                 # 跟踪主程序（图片 / 视频 / 摄像头三种输入）
 ├── test_detector.cpp        # 单帧检测测试程序
 ├── .clang-format            # 代码风格配置
 └── CMakeLists.txt
@@ -114,7 +114,7 @@ make -j$(nproc)
 
 编译产物：
 
-- `./build/DeepSORT`：视频跟踪主程序
+- `./build/YoloTracker`：跟踪主程序（支持图片 / 视频 / 摄像头输入）
 - `./build/test_detector`：单帧检测测试程序
 
 ### 4.1 代码风格
@@ -241,10 +241,12 @@ output:
 
 ```bash
 cd YOLO-Tracker   # 项目根目录
-./build/DeepSORT
+./build/YoloTracker
 # 或指定其他配置文件
-./build/DeepSORT ./config/test_deepsort.yaml
+./build/YoloTracker ./config/test_deepsort.yaml
 ```
+
+输入模式由 `input.type` 决定：`video`（视频文件）、`image`（单张图片，结果存到 `output.image`）、`camera`（摄像头设备号或 rtsp 流地址，ESC 退出）。参考 `config/test_image.yaml`。
 
 运行后：
 
