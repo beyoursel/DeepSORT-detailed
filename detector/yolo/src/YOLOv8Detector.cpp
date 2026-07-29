@@ -1,148 +1,147 @@
 /*!
     @Description : YOLOv8 detector via IBackend (ONNXRuntime CPU/GPU)
 */
-#include <YOLOv8Detector.h>
-#include <detector_utils.h>
-#include <BackendFactory.h>
-#include <AppConfig.h>
-#include <Timer.h>
+#include "YOLOv8Detector.h"
+#include "AppConfig.h"
+#include "BackendFactory.h"
+#include "Timer.h"
+#include "detector_utils.h"
 #include <fstream>
 #include <iostream>
 
 namespace detector {
 
-bool YOLOv8Detector::init()
-{
-    const DetectorConfig& cfg = AppConfig::getInstance()->detector;
+bool YOLOv8Detector::init() {
+  const DetectorConfig& cfg = AppConfig::getInstance()->detector;
 
-    confidence_threshold_ = cfg.confidence_threshold;
-    nms_threshold_ = cfg.nms_threshold;
-    model_input_width_ = cfg.input_width;
-    model_input_height_ = cfg.input_height;
-    classes_path_ = AppConfig::getInstance()->dataset.coco_labels;
+  confidence_threshold_ = cfg.confidence_threshold;
+  nms_threshold_ = cfg.nms_threshold;
+  model_input_width_ = cfg.input_width;
+  model_input_height_ = cfg.input_height;
+  classes_path_ = AppConfig::getInstance()->dataset.coco_labels;
 
-    load_classes();
+  load_classes();
 
-    backend::BackendConfig backend_cfg;
-    backend_cfg.type = cfg.backend;
-    backend_cfg.model_path = cfg.model_path;
-    backend_cfg.device_id = AppConfig::getInstance()->backend.device_id;
+  backend::BackendConfig backend_cfg;
+  backend_cfg.type = cfg.backend;
+  backend_cfg.model_path = cfg.model_path;
+  backend_cfg.device_id = AppConfig::getInstance()->backend.device_id;
 
-    backend_ = backend::BackendFactory::create(backend_cfg);
-    if (!backend_->load_model(backend_cfg.model_path)) {
-        std::cerr << "YOLOv8Detector init failed: cannot load model" << std::endl;
-        return false;
-    }
+  backend_ = backend::BackendFactory::create(backend_cfg);
+  if (!backend_->load_model(backend_cfg.model_path)) {
+    std::cerr << "YOLOv8Detector init failed: cannot load model" << std::endl;
+    return false;
+  }
 
-    return true;
+  return true;
 }
 
-void YOLOv8Detector::load_classes()
-{
-    classes_.clear();
-    std::ifstream ifs(classes_path_);
-    if (!ifs.is_open()) {
-        throw std::runtime_error("File " + classes_path_ + " not found");
-    }
-    std::string line;
-    while (std::getline(ifs, line)) {
-        classes_.push_back(line);
-    }
+void YOLOv8Detector::load_classes() {
+  classes_.clear();
+  std::ifstream ifs(classes_path_);
+  if (!ifs.is_open()) {
+    throw std::runtime_error("File " + classes_path_ + " not found");
+  }
+  std::string line;
+  while (std::getline(ifs, line)) {
+    classes_.push_back(line);
+  }
 }
 
-std::vector<float> YOLOv8Detector::preprocess(const cv::Mat& letterboxed)
-{
-    // YOLOv8 expects RGB, normalized to [0, 1], NCHW format.
-    cv::Mat blob;
-    cv::dnn::blobFromImage(letterboxed, blob, 1.0 / 255.0,
-                           cv::Size(model_input_width_, model_input_height_),
-                           cv::Scalar(0, 0, 0), true, false);
+std::vector<float> YOLOv8Detector::preprocess(const cv::Mat& letterboxed) {
+  // YOLOv8 expects RGB, normalized to [0, 1], NCHW format.
+  cv::Mat blob;
+  cv::dnn::blobFromImage(letterboxed, blob, 1.0 / 255.0,
+                         cv::Size(model_input_width_, model_input_height_),
+                         cv::Scalar(0, 0, 0), true, false);
 
-    return std::vector<float>(blob.begin<float>(), blob.end<float>());
+  return std::vector<float>(blob.begin<float>(), blob.end<float>());
 }
 
-void YOLOv8Detector::detect(cv::Mat& frame, std::vector<detect_result>& results)
-{
-    results.clear();
+void YOLOv8Detector::detect(cv::Mat& frame,
+                            std::vector<detect_result>& results) {
+  results.clear();
 
-    ScaleInfo scale_info;
-    cv::Mat letterboxed;
-    std::vector<float> input_tensor_values;
-    {
-        ScopedTimer timer("det_pre");
-        letterboxed = letterbox(frame, model_input_width_, model_input_height_, scale_info);
-        input_tensor_values = preprocess(letterboxed);
+  ScaleInfo scale_info;
+  cv::Mat letterboxed;
+  std::vector<float> input_tensor_values;
+  {
+    ScopedTimer timer("det_pre");
+    letterboxed =
+        letterbox(frame, model_input_width_, model_input_height_, scale_info);
+    input_tensor_values = preprocess(letterboxed);
+  }
+
+  std::vector<int64_t> input_shape = {1, 3, model_input_height_,
+                                      model_input_width_};
+  std::vector<float> output_data;
+  std::vector<int64_t> output_shape;
+  {
+    ScopedTimer timer("det_infer");
+    if (!backend_->run("images", input_tensor_values, input_shape, "output0",
+                       output_data, output_shape)) {
+      std::cerr << "YOLOv8 inference failed" << std::endl;
+      return;
     }
+  }
 
-    std::vector<int64_t> input_shape = {1, 3, model_input_height_, model_input_width_};
-    std::vector<float> output_data;
-    std::vector<int64_t> output_shape;
-    {
-        ScopedTimer timer("det_infer");
-        if (!backend_->run("images", input_tensor_values, input_shape,
-                           "output0", output_data, output_shape)) {
-            std::cerr << "YOLOv8 inference failed" << std::endl;
-            return;
+  // YOLOv8 output shape: (1, 4 + num_classes, num_anchors)
+  if (output_shape.size() != 3 || output_shape[1] <= 4) {
+    throw std::runtime_error("Unexpected YOLOv8 output shape");
+  }
+
+  int64_t num_anchors = output_shape[2];
+  int num_classes = static_cast<int>(output_shape[1]) - 4;
+
+  if (num_classes != static_cast<int>(classes_.size())) {
+    std::cerr << "Warning: model output classes (" << num_classes
+              << ") does not match label file classes (" << classes_.size()
+              << ")" << std::endl;
+  }
+
+  std::vector<cv::Rect> boxes;
+  std::vector<int> classIds;
+  std::vector<float> confidences;
+
+  {
+    ScopedTimer timer("det_post");
+    for (int64_t i = 0; i < num_anchors; ++i) {
+      float cx = output_data[i];
+      float cy = output_data[num_anchors + i];
+      float ow = output_data[2 * num_anchors + i];
+      float oh = output_data[3 * num_anchors + i];
+
+      float best_score = 0.0f;
+      int best_class = 0;
+      for (int c = 0; c < num_classes; ++c) {
+        float score = output_data[(4 + c) * num_anchors + i];
+        if (score > best_score) {
+          best_score = score;
+          best_class = c;
         }
+      }
+
+      if (best_score > confidence_threshold_) {
+        float x = (cx - scale_info.pad_x - 0.5f * ow) * scale_info.x_factor;
+        float y = (cy - scale_info.pad_y - 0.5f * oh) * scale_info.y_factor;
+        float width = ow * scale_info.x_factor;
+        float height = oh * scale_info.y_factor;
+
+        boxes.emplace_back(static_cast<int>(x), static_cast<int>(y),
+                           static_cast<int>(width), static_cast<int>(height));
+        classIds.push_back(best_class);
+        confidences.push_back(best_score);
+      }
     }
 
-    // YOLOv8 output shape: (1, 4 + num_classes, num_anchors)
-    if (output_shape.size() != 3 || output_shape[1] <= 4) {
-        throw std::runtime_error("Unexpected YOLOv8 output shape");
-    }
-
-    int64_t num_anchors = output_shape[2];
-    int num_classes = static_cast<int>(output_shape[1]) - 4;
-
-    if (num_classes != static_cast<int>(classes_.size())) {
-        std::cerr << "Warning: model output classes (" << num_classes
-                  << ") does not match label file classes (" << classes_.size()
-                  << ")" << std::endl;
-    }
-
-    std::vector<cv::Rect> boxes;
-    std::vector<int> classIds;
-    std::vector<float> confidences;
-
-    {
-        ScopedTimer timer("det_post");
-        for (int64_t i = 0; i < num_anchors; ++i) {
-            float cx = output_data[i];
-            float cy = output_data[num_anchors + i];
-            float ow = output_data[2 * num_anchors + i];
-            float oh = output_data[3 * num_anchors + i];
-
-            float best_score = 0.0f;
-            int best_class = 0;
-            for (int c = 0; c < num_classes; ++c) {
-                float score = output_data[(4 + c) * num_anchors + i];
-                if (score > best_score) {
-                    best_score = score;
-                    best_class = c;
-                }
-            }
-
-            if (best_score > confidence_threshold_) {
-                float x = (cx - scale_info.pad_x - 0.5f * ow) * scale_info.x_factor;
-                float y = (cy - scale_info.pad_y - 0.5f * oh) * scale_info.y_factor;
-                float width = ow * scale_info.x_factor;
-                float height = oh * scale_info.y_factor;
-
-                boxes.emplace_back(static_cast<int>(x), static_cast<int>(y),
-                                   static_cast<int>(width), static_cast<int>(height));
-                classIds.push_back(best_class);
-                confidences.push_back(best_score);
-            }
-        }
-
-        results = nms_filter(boxes, confidences, classIds,
-                             confidence_threshold_, nms_threshold_);
-    }
+    results = nms_filter(boxes, confidences, classIds, confidence_threshold_,
+                         nms_threshold_);
+  }
 }
 
-void YOLOv8Detector::draw_frame(cv::Mat& frame, std::vector<detect_result>& results)
-{
-    draw_results(frame, results, classes_);
+void YOLOv8Detector::draw_frame(cv::Mat& frame,
+                                std::vector<detect_result>& results) {
+  draw_results(frame, results, classes_);
 }
 
-} // namespace detector
+}  // namespace detector

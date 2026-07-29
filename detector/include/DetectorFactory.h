@@ -7,8 +7,8 @@
 namespace detector {
 
 class DetectorFactory {
-public:
-    static std::shared_ptr<IDetector> create(const std::string& type);
+ public:
+  static std::shared_ptr<IDetector> create(const std::string& type);
 };
 
-} // namespace detector
+}  // namespace detector
