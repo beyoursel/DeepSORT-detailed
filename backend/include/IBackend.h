@@ -25,6 +25,12 @@ class IBackend {
                    const std::string& output_name,
                    std::vector<float>& output_data,
                    std::vector<int64_t>& output_shape) = 0;
+
+  // Node names of the loaded model; valid only after LoadModel succeeds.
+  // Callers should use these instead of hardcoding ONNX node names, which
+  // differ across export toolchains (e.g. "output" vs "output0").
+  virtual std::vector<std::string> GetInputNames() const = 0;
+  virtual std::vector<std::string> GetOutputNames() const = 0;
 };
 
 }  // namespace backend

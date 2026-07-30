@@ -32,6 +32,13 @@ void YOLOv26Detector::Init() {
     throw std::runtime_error("YOLOv26Detector init failed: cannot load model " +
                              backend_cfg.model_path);
   }
+
+  if (backend_->GetInputNames().empty() || backend_->GetOutputNames().empty()) {
+    throw std::runtime_error(
+        "YOLOv26Detector init failed: model has no input/output nodes");
+  }
+  input_name_ = backend_->GetInputNames().front();
+  output_name_ = backend_->GetOutputNames().front();
 }
 
 void YOLOv26Detector::LoadClasses() {
@@ -76,8 +83,8 @@ void YOLOv26Detector::Detect(cv::Mat& frame,
   std::vector<int64_t> output_shape;
   {
     ScopedTimer timer("det_infer");
-    if (!backend_->Run("images", input_tensor_values, input_shape, "output0",
-                       output_data, output_shape)) {
+    if (!backend_->Run(input_name_, input_tensor_values, input_shape,
+                       output_name_, output_data, output_shape)) {
       throw std::runtime_error("YOLOv26 inference failed");
     }
   }

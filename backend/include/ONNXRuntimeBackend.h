@@ -21,11 +21,21 @@ class ONNXRuntimeBackend : public IBackend {
            const std::string& output_name, std::vector<float>& output_data,
            std::vector<int64_t>& output_shape) override;
 
+  std::vector<std::string> GetInputNames() const override {
+    return input_names_;
+  }
+  std::vector<std::string> GetOutputNames() const override {
+    return output_names_;
+  }
+
  private:
   BackendConfig cfg_;
   Ort::Env env_{nullptr};
   Ort::SessionOptions session_options_{nullptr};
   Ort::Session session_{nullptr};
+
+  std::vector<std::string> input_names_;
+  std::vector<std::string> output_names_;
 
   bool initialized_ = false;
   bool model_loaded_ = false;

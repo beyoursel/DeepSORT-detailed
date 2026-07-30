@@ -39,6 +39,19 @@ bool ONNXRuntimeBackend::LoadModel(const std::string& model_path) {
   }
   try {
     session_ = Ort::Session(env_, model_path.c_str(), session_options_);
+
+    Ort::AllocatorWithDefaultOptions allocator;
+    input_names_.clear();
+    for (size_t i = 0; i < session_.GetInputCount(); ++i) {
+      input_names_.push_back(
+          session_.GetInputNameAllocated(i, allocator).get());
+    }
+    output_names_.clear();
+    for (size_t i = 0; i < session_.GetOutputCount(); ++i) {
+      output_names_.push_back(
+          session_.GetOutputNameAllocated(i, allocator).get());
+    }
+
     model_loaded_ = true;
     std::cout << "Loaded model: " << model_path << std::endl;
     return true;

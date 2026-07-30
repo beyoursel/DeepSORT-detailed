@@ -33,6 +33,8 @@ class YOLOv5Detector : public IDetector {
   int model_input_width_ = 640;
   int model_input_height_ = 640;
   std::string classes_path_;
+  std::string input_name_;   // queried from the model at Init
+  std::string output_name_;  // queried from the model at Init
 };
 
 }  // namespace detector
