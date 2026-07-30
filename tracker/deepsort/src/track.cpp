@@ -12,11 +12,11 @@ Track::Track(KAL_MEAN& mean, KAL_COVA& covariance, int track_id, int n_init,
   features = FEATURESS(1, feature.cols());
   features.row(0) = feature;  // features.rows() must = 0;
 
-  this->_n_init = n_init;
-  this->_max_age = max_age;
+  this->n_init = n_init;
+  this->max_age = max_age;
 }
 
-void Track::predit(KalmanFilter* kf) {
+void Track::Predict(KalmanFilter* kf) {
   /*Propagate the state distribution to the current time step using a
       Kalman filter prediction step.
 
@@ -26,47 +26,47 @@ void Track::predit(KalmanFilter* kf) {
           The Kalman filter.
       */
 
-  kf->predict(this->mean, this->covariance);
+  kf->Predict(this->mean, this->covariance);
   this->age += 1;
   this->time_since_update += 1;
 }
 
-void Track::update(KalmanFilter* const kf, const DETECTION_ROW& detection) {
-  KAL_DATA pa = kf->update(this->mean, this->covariance, detection.to_xyah());
+void Track::Update(KalmanFilter* const kf, const DETECTION_ROW& detection) {
+  KAL_DATA pa = kf->Update(this->mean, this->covariance, detection.ToXyah());
   this->mean = pa.first;
   this->covariance = pa.second;
 
-  featuresAppendOne(detection.feature);
+  FeaturesAppendOne(detection.feature);
   //    this->features.row(features.rows()) = detection.feature;
   this->hits += 1;
   this->time_since_update = 0;
-  if (this->state == TrackState::Tentative && this->hits >= this->_n_init) {
+  if (this->state == TrackState::Tentative && this->hits >= this->n_init) {
     this->state = TrackState::Confirmed;
   }
 }
 
-void Track::mark_missed() {
+void Track::MarkMissed() {
   if (this->state == TrackState::Tentative) {
     this->state = TrackState::Deleted;
-  } else if (this->time_since_update > this->_max_age) {
+  } else if (this->time_since_update > this->max_age) {
     this->state = TrackState::Deleted;
   }
 }
 
-bool Track::is_confirmed() { return this->state == TrackState::Confirmed; }
+bool Track::IsConfirmed() { return this->state == TrackState::Confirmed; }
 
-bool Track::is_deleted() { return this->state == TrackState::Deleted; }
+bool Track::IsDeleted() { return this->state == TrackState::Deleted; }
 
-bool Track::is_tentative() { return this->state == TrackState::Tentative; }
+bool Track::IsTentative() { return this->state == TrackState::Tentative; }
 
-DETECTBOX Track::to_tlwh() {
+DETECTBOX Track::ToTlwh() {
   DETECTBOX ret = mean.leftCols(4);
   ret(2) *= ret(3);
   ret.leftCols(2) -= (ret.rightCols(2) / 2);
   return ret;
 }
 
-void Track::featuresAppendOne(const FEATURE& f) {
+void Track::FeaturesAppendOne(const FEATURE& f) {
   int size = this->features.rows();
   int dim = this->features.cols();
   FEATURESS newfeatures = FEATURESS(size + 1, dim);

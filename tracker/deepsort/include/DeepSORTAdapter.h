@@ -4,7 +4,7 @@
 #include "ITracker.h"
 #include <memory>
 
-class tracker;  // legacy DeepSORT tracker
+class Tracker;  // legacy DeepSORT Tracker
 
 namespace tracking {
 
@@ -19,7 +19,7 @@ class DeepSORTAdapter : public ITracker {
       const std::vector<detect_result>& detections) override;
 
  private:
-  std::unique_ptr<::tracker> impl_;
+  std::unique_ptr<::Tracker> impl_;
 };
 
 }  // namespace tracking

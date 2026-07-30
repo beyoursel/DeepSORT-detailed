@@ -6,7 +6,7 @@
 
 /** Column-reduction and reduction transfer for a dense cost matrix.
  */
-int_t _ccrrt_dense(const uint_t n, cost_t* cost[], int_t* free_rows, int_t* x,
+int_t CcrrtDense(const uint_t n, cost_t* cost[], int_t* free_rows, int_t* x,
                    int_t* y, cost_t* v) {
   int_t n_free_rows;
   boolean* unique;
@@ -69,7 +69,7 @@ int_t _ccrrt_dense(const uint_t n, cost_t* cost[], int_t* free_rows, int_t* x,
 
 /** Augmenting row reduction for a dense cost matrix.
  */
-int_t _carr_dense(const uint_t n, cost_t* cost[], const uint_t n_free_rows,
+int_t CarrDense(const uint_t n, cost_t* cost[], const uint_t n_free_rows,
                   int_t* free_rows, int_t* x, int_t* y, cost_t* v) {
   uint_t current = 0;
   int_t new_free_rows = 0;
@@ -140,7 +140,7 @@ int_t _carr_dense(const uint_t n, cost_t* cost[], const uint_t n_free_rows,
 
 /** Find columns with minimum d[j] and put them on the SCAN list.
  */
-uint_t _find_dense(const uint_t n, uint_t lo, cost_t* d, int_t* cols,
+uint_t FindDense(const uint_t n, uint_t lo, cost_t* d, int_t* cols,
                    int_t* y) {
   uint_t hi = lo + 1;
   cost_t mind = d[cols[lo]];
@@ -160,7 +160,7 @@ uint_t _find_dense(const uint_t n, uint_t lo, cost_t* d, int_t* cols,
 
 // Scan all columns in TODO starting from arbitrary column in SCAN
 // and try to decrease d of the TODO columns using the SCAN column.
-int_t _scan_dense(const uint_t n, cost_t* cost[], uint_t* plo, uint_t* phi,
+int_t ScanDense(const uint_t n, cost_t* cost[], uint_t* plo, uint_t* phi,
                   cost_t* d, int_t* cols, int_t* pred, int_t* y, cost_t* v) {
   uint_t lo = *plo;
   uint_t hi = *phi;
@@ -201,7 +201,7 @@ int_t _scan_dense(const uint_t n, cost_t* cost[], uint_t* plo, uint_t* phi,
  *
  * \return The closest free column index.
  */
-int_t find_path_dense(const uint_t n, cost_t* cost[], const int_t start_i,
+int_t FindPathDense(const uint_t n, cost_t* cost[], const int_t start_i,
                       int_t* y, cost_t* v, int_t* pred) {
   uint_t lo = 0, hi = 0;
   int_t final_j = -1;
@@ -223,7 +223,7 @@ int_t find_path_dense(const uint_t n, cost_t* cost[], const int_t start_i,
     if (lo == hi) {
       PRINTF("%d..%d -> find\n", lo, hi);
       n_ready = lo;
-      hi = _find_dense(n, lo, d, cols, y);
+      hi = FindDense(n, lo, d, cols, y);
       PRINTF("check %d..%d\n", lo, hi);
       PRINT_INDEX_ARRAY(cols, n);
       for (uint_t k = lo; k < hi; k++) {
@@ -235,7 +235,7 @@ int_t find_path_dense(const uint_t n, cost_t* cost[], const int_t start_i,
     }
     if (final_j == -1) {
       PRINTF("%d..%d -> scan\n", lo, hi);
-      final_j = _scan_dense(n, cost, &lo, &hi, d, cols, pred, y, v);
+      final_j = ScanDense(n, cost, &lo, &hi, d, cols, pred, y, v);
       PRINT_COST_ARRAY(d, n);
       PRINT_INDEX_ARRAY(cols, n);
       PRINT_INDEX_ARRAY(pred, n);
@@ -260,7 +260,7 @@ int_t find_path_dense(const uint_t n, cost_t* cost[], const int_t start_i,
 
 /** Augment for a dense cost matrix.
  */
-int_t _ca_dense(const uint_t n, cost_t* cost[], const uint_t n_free_rows,
+int_t CaDense(const uint_t n, cost_t* cost[], const uint_t n_free_rows,
                 int_t* free_rows, int_t* x, int_t* y, cost_t* v) {
   int_t* pred;
 
@@ -272,7 +272,7 @@ int_t _ca_dense(const uint_t n, cost_t* cost[], const uint_t n_free_rows,
     uint_t k = 0;
 
     PRINTF("looking at free_i=%d\n", *pfree_i);
-    j = find_path_dense(n, cost, *pfree_i, y, v, pred);
+    j = FindPathDense(n, cost, *pfree_i, y, v, pred);
     ASSERT(j >= 0);
     ASSERT(j < n);
     while (i != *pfree_i) {
@@ -295,21 +295,21 @@ int_t _ca_dense(const uint_t n, cost_t* cost[], const uint_t n_free_rows,
 
 /** Solve dense sparse LAP.
  */
-int lapjv_internal(const uint_t n, cost_t* cost[], int_t* x, int_t* y) {
+int LapjvInternal(const uint_t n, cost_t* cost[], int_t* x, int_t* y) {
   int ret;
   int_t* free_rows;
   cost_t* v;
 
   NEW(free_rows, int_t, n);
   NEW(v, cost_t, n);
-  ret = _ccrrt_dense(n, cost, free_rows, x, y, v);
+  ret = CcrrtDense(n, cost, free_rows, x, y, v);
   int i = 0;
   while (ret > 0 && i < 2) {
-    ret = _carr_dense(n, cost, ret, free_rows, x, y, v);
+    ret = CarrDense(n, cost, ret, free_rows, x, y, v);
     i++;
   }
   if (ret > 0) {
-    ret = _ca_dense(n, cost, ret, free_rows, x, y, v);
+    ret = CaDense(n, cost, ret, free_rows, x, y, v);
   }
   FREE(v);
   FREE(free_rows);

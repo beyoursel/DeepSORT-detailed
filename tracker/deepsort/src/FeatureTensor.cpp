@@ -10,13 +10,13 @@
 #include "Timer.h"
 #include <iostream>
 
-FeatureTensor* FeatureTensor::instance = NULL;
+FeatureTensor* FeatureTensor::instance_ = NULL;
 
-FeatureTensor* FeatureTensor::getInstance() {
-  if (instance == NULL) {
-    instance = new FeatureTensor();
+FeatureTensor* FeatureTensor::GetInstance() {
+  if (instance_ == NULL) {
+    instance_ = new FeatureTensor();
   }
-  return instance;
+  return instance_;
 }
 
 FeatureTensor::FeatureTensor() {
@@ -32,21 +32,21 @@ FeatureTensor::FeatureTensor() {
 
   backend_ = backend::BackendFactory::Create(backend_cfg);
   if (!backend_->LoadModel(backend_cfg.model_path)) {
-    throw std::runtime_error("FeatureTensor init failed: cannot load model " +
+    throw std::runtime_error("FeatureTensor Init failed: cannot load model " +
                              backend_cfg.model_path);
   }
 
   // prepare model:
-  if (!init()) {
+  if (!Init()) {
     throw std::runtime_error(
-        "FeatureTensor init failed: dummy inference failed");
+        "FeatureTensor Init failed: dummy inference failed");
   }
-  std::cout << "FeatureTensor init succeed" << std::endl;
+  std::cout << "FeatureTensor Init succeed" << std::endl;
 }
 
 FeatureTensor::~FeatureTensor() {}
 
-bool FeatureTensor::init() {
+bool FeatureTensor::Init() {
   // Query input shape from backend by running a dummy inference.
   std::vector<float> dummy_input(width_ * height_ * 3, 0.0f);
   std::vector<float> dummy_output;
@@ -54,7 +54,7 @@ bool FeatureTensor::init() {
 
   if (!backend_->Run("input", dummy_input, input_shape_, "output", dummy_output,
                      output_shape)) {
-    std::cerr << "FeatureTensor init failed: dummy inference failed"
+    std::cerr << "FeatureTensor Init failed: dummy inference failed"
               << std::endl;
     return false;
   }
@@ -62,12 +62,12 @@ bool FeatureTensor::init() {
   inputDims_ = input_shape_;
   std::cout << "Input Dimensions: " << inputDims_
             << std::endl;  // [1, 3, 128, 64]
-  std::cout << "FeatureTensor::init() " << std::endl;
+  std::cout << "FeatureTensor::Init() " << std::endl;
 
   return true;
 }
 
-void FeatureTensor::preprocess(cv::Mat& imageBGR,
+void FeatureTensor::Preprocess(cv::Mat& imageBGR,
                                std::vector<float>& inputTensorValues,
                                size_t& inputTensorSize) {
   // pre-processing the Image
@@ -109,12 +109,12 @@ void FeatureTensor::preprocess(cv::Mat& imageBGR,
   // step 8: Convert the image to CHW RGB float format.
   // HWC to CHW
   cv::dnn::blobFromImage(resizedImage, preprocessedImage);
-  inputTensorSize = vectorProduct(inputDims_);
+  inputTensorSize = VectorProduct(inputDims_);
   inputTensorValues.assign(preprocessedImage.begin<float>(),
                            preprocessedImage.end<float>());
 }
 
-bool FeatureTensor::getRectsFeature(const cv::Mat& img, DETECTIONS& d) {
+bool FeatureTensor::GetRectsFeature(const cv::Mat& img, DETECTIONS& d) {
   ScopedTimer timer("reid");
 
   for (DETECTION_ROW& dbox : d) {
@@ -131,7 +131,7 @@ bool FeatureTensor::getRectsFeature(const cv::Mat& img, DETECTIONS& d) {
 
     std::vector<float> inputTensorValues;
     size_t inputTensorSize;
-    preprocess(mattmp, inputTensorValues, inputTensorSize);
+    Preprocess(mattmp, inputTensorValues, inputTensorSize);
 
     if (!backend_->Run("input", inputTensorValues, inputDims_, "output",
                        results_, output_shape_)) {
@@ -148,7 +148,7 @@ bool FeatureTensor::getRectsFeature(const cv::Mat& img, DETECTIONS& d) {
   return true;
 }
 
-void FeatureTensor::tobuffer(const std::vector<cv::Mat>& imgs, uint8* buf) {
+void FeatureTensor::ToBuffer(const std::vector<cv::Mat>& imgs, uint8* buf) {
   int pos = 0;
   for (const cv::Mat& img : imgs) {
     int Lenth = img.rows * img.cols * 3;
@@ -167,4 +167,4 @@ void FeatureTensor::tobuffer(const std::vector<cv::Mat>& imgs, uint8* buf) {
     }  // end for
   }    // end imgs;
 }
-void FeatureTensor::test() { return; }
+void FeatureTensor::Test() { return; }

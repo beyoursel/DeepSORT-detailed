@@ -29,7 +29,7 @@
 typedef unsigned char uint8;
 
 template <typename T>
-T vectorProduct(const std::vector<T>& v) {
+T VectorProduct(const std::vector<T>& v) {
   return std::accumulate(v.begin(), v.end(), 1, std::multiplies<T>());
 }
 
@@ -48,23 +48,23 @@ std::ostream& operator<<(std::ostream& os, const std::vector<T>& v) {
 
 class FeatureTensor {
  public:
-  static FeatureTensor* getInstance();
-  bool getRectsFeature(const cv::Mat& img, DETECTIONS& d);
-  void preprocess(cv::Mat& imageBGR, std::vector<float>& inputTensorValues,
+  static FeatureTensor* GetInstance();
+  bool GetRectsFeature(const cv::Mat& img, DETECTIONS& d);
+  void Preprocess(cv::Mat& imageBGR, std::vector<float>& inputTensorValues,
                   size_t& inputTensorSize);
 
  private:
   FeatureTensor();
   FeatureTensor(const FeatureTensor&);
   FeatureTensor& operator=(const FeatureTensor&);
-  static FeatureTensor* instance;
-  bool init();
+  static FeatureTensor* instance_;
+  bool Init();
   ~FeatureTensor();
 
-  void tobuffer(const std::vector<cv::Mat>& imgs, uint8* buf);
+  void ToBuffer(const std::vector<cv::Mat>& imgs, uint8* buf);
 
  public:
-  void test();
+  void Test();
 
   static constexpr const int width_ = 64;
   static constexpr const int height_ = 128;

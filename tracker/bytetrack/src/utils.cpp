@@ -1,8 +1,8 @@
 #include "BYTETracker.h"
 #include "lapjv.h"
 
-std::vector<STrack*> BYTETracker::joint_stracks(std::vector<STrack*>& tlista,
-                                                std::vector<STrack>& tlistb) {
+std::vector<STrack*> ByteTracker::JointStracks(std::vector<STrack*>& tlista,
+                                               std::vector<STrack>& tlistb) {
   std::map<int, int> exists;
   std::vector<STrack*> res;
   for (int i = 0; i < tlista.size(); i++) {
@@ -19,8 +19,8 @@ std::vector<STrack*> BYTETracker::joint_stracks(std::vector<STrack*>& tlista,
   return res;
 }
 
-std::vector<STrack> BYTETracker::joint_stracks(std::vector<STrack>& tlista,
-                                               std::vector<STrack>& tlistb) {
+std::vector<STrack> ByteTracker::JointStracks(std::vector<STrack>& tlista,
+                                              std::vector<STrack>& tlistb) {
   std::map<int, int> exists;
   std::vector<STrack> res;
   for (int i = 0; i < tlista.size(); i++) {
@@ -37,8 +37,8 @@ std::vector<STrack> BYTETracker::joint_stracks(std::vector<STrack>& tlista,
   return res;
 }
 
-std::vector<STrack> BYTETracker::sub_stracks(std::vector<STrack>& tlista,
-                                             std::vector<STrack>& tlistb) {
+std::vector<STrack> ByteTracker::SubStracks(std::vector<STrack>& tlista,
+                                            std::vector<STrack>& tlistb) {
   std::map<int, STrack> stracks;
   for (int i = 0; i < tlista.size(); i++) {
     stracks.insert(std::pair<int, STrack>(tlista[i].track_id, tlista[i]));
@@ -59,11 +59,11 @@ std::vector<STrack> BYTETracker::sub_stracks(std::vector<STrack>& tlista,
   return res;
 }
 
-void BYTETracker::remove_duplicate_stracks(std::vector<STrack>& resa,
-                                           std::vector<STrack>& resb,
-                                           std::vector<STrack>& stracksa,
-                                           std::vector<STrack>& stracksb) {
-  std::vector<std::vector<float>> pdist = iou_distance(stracksa, stracksb);
+void ByteTracker::RemoveDuplicateStracks(std::vector<STrack>& resa,
+                                         std::vector<STrack>& resb,
+                                         std::vector<STrack>& stracksa,
+                                         std::vector<STrack>& stracksb) {
+  std::vector<std::vector<float>> pdist = IouDistance(stracksa, stracksb);
   std::vector<std::pair<int, int>> pairs;
   for (int i = 0; i < pdist.size(); i++) {
     for (int j = 0; j < pdist[i].size(); j++) {
@@ -100,7 +100,7 @@ void BYTETracker::remove_duplicate_stracks(std::vector<STrack>& resa,
   }
 }
 
-void BYTETracker::linear_assignment(
+void ByteTracker::LinearAssignment(
     std::vector<std::vector<float>>& cost_matrix, int cost_matrix_size,
     int cost_matrix_size_size, float thresh,
     std::vector<std::vector<int>>& matches, std::vector<int>& unmatched_a,
@@ -117,7 +117,7 @@ void BYTETracker::linear_assignment(
 
   std::vector<int> rowsol;
   std::vector<int> colsol;
-  float c = lapjv(cost_matrix, rowsol, colsol, true, thresh);
+  float c = Lapjv(cost_matrix, rowsol, colsol, true, thresh);
   for (int i = 0; i < rowsol.size(); i++) {
     if (rowsol[i] >= 0) {
       std::vector<int> match;
@@ -136,7 +136,7 @@ void BYTETracker::linear_assignment(
   }
 }
 
-std::vector<std::vector<float>> BYTETracker::ious(
+std::vector<std::vector<float>> ByteTracker::Ious(
     std::vector<std::vector<float>>& atlbrs,
     std::vector<std::vector<float>>& btlbrs) {
   std::vector<std::vector<float>> ious;
@@ -175,7 +175,7 @@ std::vector<std::vector<float>> BYTETracker::ious(
   return ious;
 }
 
-std::vector<std::vector<float>> BYTETracker::iou_distance(
+std::vector<std::vector<float>> ByteTracker::IouDistance(
     std::vector<STrack*>& atracks, std::vector<STrack>& btracks, int& dist_size,
     int& dist_size_size) {
   std::vector<std::vector<float>> cost_matrix;
@@ -195,7 +195,7 @@ std::vector<std::vector<float>> BYTETracker::iou_distance(
   dist_size = atracks.size();
   dist_size_size = btracks.size();
 
-  std::vector<std::vector<float>> _ious = ious(atlbrs, btlbrs);
+  std::vector<std::vector<float>> _ious = Ious(atlbrs, btlbrs);
 
   for (int i = 0; i < _ious.size(); i++) {
     std::vector<float> _iou;
@@ -208,7 +208,7 @@ std::vector<std::vector<float>> BYTETracker::iou_distance(
   return cost_matrix;
 }
 
-std::vector<std::vector<float>> BYTETracker::iou_distance(
+std::vector<std::vector<float>> ByteTracker::IouDistance(
     std::vector<STrack>& atracks, std::vector<STrack>& btracks) {
   std::vector<std::vector<float>> atlbrs, btlbrs;
   for (int i = 0; i < atracks.size(); i++) {
@@ -218,7 +218,7 @@ std::vector<std::vector<float>> BYTETracker::iou_distance(
     btlbrs.push_back(btracks[i].tlbr);
   }
 
-  std::vector<std::vector<float>> _ious = ious(atlbrs, btlbrs);
+  std::vector<std::vector<float>> _ious = Ious(atlbrs, btlbrs);
   std::vector<std::vector<float>> cost_matrix;
   for (int i = 0; i < _ious.size(); i++) {
     std::vector<float> _iou;
@@ -231,7 +231,7 @@ std::vector<std::vector<float>> BYTETracker::iou_distance(
   return cost_matrix;
 }
 
-double BYTETracker::lapjv(const std::vector<std::vector<float>>& cost,
+double ByteTracker::Lapjv(const std::vector<std::vector<float>>& cost,
                           std::vector<int>& rowsol, std::vector<int>& colsol,
                           bool extend_cost, float cost_limit,
                           bool return_cost) {
@@ -309,7 +309,7 @@ double BYTETracker::lapjv(const std::vector<std::vector<float>>& cost,
   int* x_c = new int[sizeof(int) * n];
   int* y_c = new int[sizeof(int) * n];
 
-  int ret = lapjv_internal(n, cost_ptr, x_c, y_c);
+  int ret = LapjvInternal(n, cost_ptr, x_c, y_c);
   if (ret != 0) {
     std::cout << "Calculate Wrong!" << std::endl;
     exit(0);
@@ -354,7 +354,7 @@ double BYTETracker::lapjv(const std::vector<std::vector<float>>& cost,
   return opt;
 }
 
-cv::Scalar BYTETracker::get_color(int idx) {
+cv::Scalar ByteTracker::GetColor(int idx) {
   idx += 3;
   return cv::Scalar(37 * idx % 255, 17 * idx % 255, 29 * idx % 255);
 }

@@ -6,29 +6,29 @@ NearNeighborDisMetric::NearNeighborDisMetric(
     NearNeighborDisMetric::METRIC_TYPE metric, float matching_threshold,
     int budget) {
   if (metric == euclidean) {
-    _metric = &NearNeighborDisMetric::_nneuclidean_distance;
+    metric_ = &NearNeighborDisMetric::NnEuclideanDistance;
   } else if (metric == cosine) {
-    _metric = &NearNeighborDisMetric::_nncosine_distance;
+    metric_ = &NearNeighborDisMetric::NnCosineDistance;
   }
 
   this->mating_threshold = matching_threshold;
-  this->budget = budget;
-  this->samples.clear();
+  this->budget_ = budget;
+  this->samples_.clear();
 }
 
 DYNAMICM
-NearNeighborDisMetric::distance(const FEATURESS& features,
+NearNeighborDisMetric::Distance(const FEATURESS& features,
                                 const std::vector<int>& targets) {
   DYNAMICM cost_matrix = Eigen::MatrixXf::Zero(targets.size(), features.rows());
   int idx = 0;
   for (int target : targets) {
-    cost_matrix.row(idx) = (this->*_metric)(this->samples[target], features);
+    cost_matrix.row(idx) = (this->*metric_)(this->samples_[target], features);
     idx++;
   }
   return cost_matrix;
 }
 
-void NearNeighborDisMetric::partial_fit(std::vector<TRACKER_DATA>& tid_feats,
+void NearNeighborDisMetric::PartialFit(std::vector<TRACKER_DATA>& tid_feats,
                                         std::vector<int>& active_targets) {
   /*python code:
    * let feature(target_id) append to samples;
@@ -40,54 +40,54 @@ void NearNeighborDisMetric::partial_fit(std::vector<TRACKER_DATA>& tid_feats,
     int track_id = data.first;
     FEATURESS newFeatOne = data.second;
 
-    if (samples.find(track_id) != samples.end()) {  // append
-      int oldSize = samples[track_id].rows();
+    if (samples_.find(track_id) != samples_.end()) {  // append
+      int oldSize = samples_[track_id].rows();
       int addSize = newFeatOne.rows();
       int newSize = oldSize + addSize;
 
-      int feature_dim = samples[track_id].cols();
-      if (newSize <= this->budget) {
+      int feature_dim = samples_[track_id].cols();
+      if (newSize <= this->budget_) {
         FEATURESS newSampleFeatures(newSize, feature_dim);
-        newSampleFeatures.block(0, 0, oldSize, feature_dim) = samples[track_id];
+        newSampleFeatures.block(0, 0, oldSize, feature_dim) = samples_[track_id];
         newSampleFeatures.block(oldSize, 0, addSize, feature_dim) = newFeatOne;
-        samples[track_id] = newSampleFeatures;
+        samples_[track_id] = newSampleFeatures;
       } else {
-        if (oldSize < this->budget) {  // original space is not enough;
-          FEATURESS newSampleFeatures(this->budget, feature_dim);
-          if (addSize >= this->budget) {
+        if (oldSize < this->budget_) {  // original space is not enough;
+          FEATURESS newSampleFeatures(this->budget_, feature_dim);
+          if (addSize >= this->budget_) {
             newSampleFeatures =
-                newFeatOne.block(0, 0, this->budget, feature_dim);
+                newFeatOne.block(0, 0, this->budget_, feature_dim);
           } else {
-            newSampleFeatures.block(0, 0, this->budget - addSize, feature_dim) =
-                samples[track_id]
-                    .block(addSize, 0, this->budget - addSize, feature_dim)
+            newSampleFeatures.block(0, 0, this->budget_ - addSize, feature_dim) =
+                samples_[track_id]
+                    .block(addSize, 0, this->budget_ - addSize, feature_dim)
                     .eval();
-            newSampleFeatures.block(this->budget - addSize, 0, addSize,
+            newSampleFeatures.block(this->budget_ - addSize, 0, addSize,
                                     feature_dim) = newFeatOne;
           }
-          samples[track_id] = newSampleFeatures;
+          samples_[track_id] = newSampleFeatures;
         } else {  // original space is ok;
-          if (addSize >= this->budget) {
-            samples[track_id] =
-                newFeatOne.block(0, 0, this->budget, feature_dim);
+          if (addSize >= this->budget_) {
+            samples_[track_id] =
+                newFeatOne.block(0, 0, this->budget_, feature_dim);
           } else {
-            samples[track_id].block(0, 0, this->budget - addSize, feature_dim) =
-                samples[track_id]
-                    .block(addSize, 0, this->budget - addSize, feature_dim)
+            samples_[track_id].block(0, 0, this->budget_ - addSize, feature_dim) =
+                samples_[track_id]
+                    .block(addSize, 0, this->budget_ - addSize, feature_dim)
                     .eval();
-            samples[track_id].block(this->budget - addSize, 0, addSize,
+            samples_[track_id].block(this->budget_ - addSize, 0, addSize,
                                     feature_dim) = newFeatOne;
           }
         }
       }
     } else {  // not exit, create new one;
-      samples[track_id] = newFeatOne;
+      samples_[track_id] = newFeatOne;
     }
   }  // add features;
 
   // erase the samples which not in active_targets;
-  for (std::map<int, FEATURESS>::iterator i = samples.begin();
-       i != samples.end();) {
+  for (std::map<int, FEATURESS>::iterator i = samples_.begin();
+       i != samples_.end();) {
     bool flag = false;
     for (int j : active_targets)
       if (j == i->first) {
@@ -95,28 +95,28 @@ void NearNeighborDisMetric::partial_fit(std::vector<TRACKER_DATA>& tid_feats,
         break;
       }
     if (flag == false)
-      samples.erase(i++);
+      samples_.erase(i++);
     else
       i++;
   }
 }
 
-Eigen::VectorXf NearNeighborDisMetric::_nncosine_distance(const FEATURESS& x,
+Eigen::VectorXf NearNeighborDisMetric::NnCosineDistance(const FEATURESS& x,
                                                           const FEATURESS& y) {
-  MatrixXf distances = _cosine_distance(x, y);
+  MatrixXf distances = CosineDistance(x, y);
   VectorXf res = distances.colwise().minCoeff().transpose();
   return res;
 }
 
-Eigen::VectorXf NearNeighborDisMetric::_nneuclidean_distance(
+Eigen::VectorXf NearNeighborDisMetric::NnEuclideanDistance(
     const FEATURESS& x, const FEATURESS& y) {
-  MatrixXf distances = _pdist(x, y);
+  MatrixXf distances = Pdist(x, y);
   VectorXf res = distances.colwise().minCoeff().transpose();
   res = res.array().max(VectorXf::Zero(res.rows()).array());
   return res;
 }
 
-Eigen::MatrixXf NearNeighborDisMetric::_pdist(const FEATURESS& x,
+Eigen::MatrixXf NearNeighborDisMetric::Pdist(const FEATURESS& x,
                                               const FEATURESS& y) {
   int len1 = x.rows(), len2 = y.rows();
   if (len1 == 0 || len2 == 0) {
@@ -129,7 +129,7 @@ Eigen::MatrixXf NearNeighborDisMetric::_pdist(const FEATURESS& x,
   return res;
 }
 
-Eigen::MatrixXf NearNeighborDisMetric::_cosine_distance(
+Eigen::MatrixXf NearNeighborDisMetric::CosineDistance(
     const FEATURESS& a, const FEATURESS& b, bool data_is_normalized) {
   if (data_is_normalized == true) {
     return 1. - (a * b.transpose()).array();

@@ -45,8 +45,8 @@ class Munkres {
    * (extra 0 values are replaced with -1)
    *
    */
-  void solve(Matrix<Data>& m) {
-    const size_t rows = m.rows(), columns = m.columns(),
+  void Solve(Matrix<Data>& m) {
+    const size_t rows = m.Rows(), columns = m.Columns(),
                  size = XYZMAX(rows, columns);
 
 #ifdef DEBUG
@@ -54,59 +54,59 @@ class Munkres {
 #endif
 
     // Copy input matrix
-    this->matrix = m;
+    this->matrix_ = m;
 
     if (rows != columns) {
       // If the input matrix isn't square, make it square
       // and fill the empty values with the largest value present
       // in the matrix.
-      matrix.resize(size, size, matrix.mmax());
+      matrix_.Resize(size, size, matrix_.Mmax());
     }
 
     // STAR == 1 == starred, PRIME == 2 == primed
-    mask_matrix.resize(size, size);
+    mask_matrix_.Resize(size, size);
 
-    row_mask = new bool[size];
-    col_mask = new bool[size];
+    row_mask_ = new bool[size];
+    col_mask_ = new bool[size];
     for (size_t i = 0; i < size; i++) {
-      row_mask[i] = false;
+      row_mask_[i] = false;
     }
 
     for (size_t i = 0; i < size; i++) {
-      col_mask[i] = false;
+      col_mask_[i] = false;
     }
 
     // Prepare the matrix values...
 
     // If there were any infinities, replace them with a value greater
     // than the maximum value in the matrix.
-    replace_infinites(matrix);
+    ReplaceInfinites(matrix_);
 
-    minimize_along_direction(matrix, rows >= columns);
-    minimize_along_direction(matrix, rows < columns);
+    MinimizeAlongDirection(matrix_, rows >= columns);
+    MinimizeAlongDirection(matrix_, rows < columns);
 
     // Follow the steps
     int step = 1;
     while (step) {
       switch (step) {
         case 1:
-          step = step1();
+          step = Step1();
           // step is always 2
           break;
         case 2:
-          step = step2();
+          step = Step2();
           // step is always either 0 or 3
           break;
         case 3:
-          step = step3();
+          step = Step3();
           // step in [3, 4, 5]
           break;
         case 4:
-          step = step4();
+          step = Step4();
           // step is always 2
           break;
         case 5:
-          step = step5();
+          step = Step5();
           // step is always 3
           break;
       }
@@ -115,29 +115,29 @@ class Munkres {
     // Store results
     for (size_t row = 0; row < size; row++) {
       for (size_t col = 0; col < size; col++) {
-        if (mask_matrix(row, col) == STAR) {
-          matrix(row, col) = 0;
+        if (mask_matrix_(row, col) == STAR) {
+          matrix_(row, col) = 0;
         } else {
-          matrix(row, col) = -1;
+          matrix_(row, col) = -1;
         }
       }
     }
 
 #ifdef DEBUG
-    std::cout << "Munkres output: " << matrix << std::endl;
+    std::cout << "Munkres output: " << matrix_ << std::endl;
 #endif
     // Remove the excess rows or columns that we added to fit the
     // input to a square matrix.
-    matrix.resize(rows, columns);
+    matrix_.Resize(rows, columns);
 
-    m = matrix;
+    m = matrix_;
 
-    delete[] row_mask;
-    delete[] col_mask;
+    delete[] row_mask_;
+    delete[] col_mask_;
   }
 
-  static void replace_infinites(Matrix<Data>& matrix) {
-    const size_t rows = matrix.rows(), columns = matrix.columns();
+  static void ReplaceInfinites(Matrix<Data>& matrix) {
+    const size_t rows = matrix.Rows(), columns = matrix.Columns();
     // assert( rows > 0 && columns > 0 );
     double max = matrix(0, 0);
     constexpr auto infinity = std::numeric_limits<double>::infinity();
@@ -171,10 +171,10 @@ class Munkres {
       }
     }
   }
-  static void minimize_along_direction(Matrix<Data>& matrix,
+  static void MinimizeAlongDirection(Matrix<Data>& matrix,
                                        const bool over_columns) {
-    const size_t outer_size = over_columns ? matrix.columns() : matrix.rows(),
-                 inner_size = over_columns ? matrix.rows() : matrix.columns();
+    const size_t outer_size = over_columns ? matrix.Columns() : matrix.Rows(),
+                 inner_size = over_columns ? matrix.Rows() : matrix.Columns();
 
     // Look for a minimum value to subtract from all values along
     // the "outer" direction.
@@ -201,15 +201,15 @@ class Munkres {
   }
 
  private:
-  inline bool find_uncovered_in_matrix(const double item, size_t& row,
+  inline bool FindUncoveredInMatrix(const double item, size_t& row,
                                        size_t& col) const {
-    const size_t rows = matrix.rows(), columns = matrix.columns();
+    const size_t rows = matrix_.Rows(), columns = matrix_.Columns();
 
     for (row = 0; row < rows; row++) {
-      if (!row_mask[row]) {
+      if (!row_mask_[row]) {
         for (col = 0; col < columns; col++) {
-          if (!col_mask[col]) {
-            if (matrix(row, col) == item) {
+          if (!col_mask_[col]) {
+            if (matrix_(row, col) == item) {
               return true;
             }
           }
@@ -220,7 +220,7 @@ class Munkres {
     return false;
   }
 
-  bool pair_in_list(const std::pair<size_t, size_t>& needle,
+  bool PairInList(const std::pair<size_t, size_t>& needle,
                     const std::list<std::pair<size_t, size_t>>& haystack) {
     for (std::list<std::pair<size_t, size_t>>::const_iterator i =
              haystack.begin();
@@ -233,16 +233,16 @@ class Munkres {
     return false;
   }
 
-  int step1() {
-    const size_t rows = matrix.rows(), columns = matrix.columns();
+  int Step1() {
+    const size_t rows = matrix_.Rows(), columns = matrix_.Columns();
 
     for (size_t row = 0; row < rows; row++) {
       for (size_t col = 0; col < columns; col++) {
-        if (0 == matrix(row, col)) {
+        if (0 == matrix_(row, col)) {
           for (size_t nrow = 0; nrow < row; nrow++)
-            if (STAR == mask_matrix(nrow, col)) goto next_column;
+            if (STAR == mask_matrix_(nrow, col)) goto next_column;
 
-          mask_matrix(row, col) = STAR;
+          mask_matrix_(row, col) = STAR;
           goto next_row;
         }
       next_column:;
@@ -253,18 +253,18 @@ class Munkres {
     return 2;
   }
 
-  int step2() {
-    const size_t rows = matrix.rows(), columns = matrix.columns();
+  int Step2() {
+    const size_t rows = matrix_.Rows(), columns = matrix_.Columns();
     size_t covercount = 0;
 
     for (size_t row = 0; row < rows; row++)
       for (size_t col = 0; col < columns; col++)
-        if (STAR == mask_matrix(row, col)) {
-          col_mask[col] = true;
+        if (STAR == mask_matrix_(row, col)) {
+          col_mask_[col] = true;
           covercount++;
         }
 
-    if (covercount >= matrix.minsize()) {
+    if (covercount >= matrix_.Minsize()) {
 #ifdef DEBUG
       std::cout << "Final cover count: " << covercount << std::endl;
 #endif
@@ -273,14 +273,14 @@ class Munkres {
 
 #ifdef DEBUG
     std::cout << "Munkres matrix has " << covercount << " of "
-              << matrix.minsize() << " Columns covered:" << std::endl;
-    std::cout << matrix << std::endl;
+              << matrix_.Minsize() << " Columns covered:" << std::endl;
+    std::cout << matrix_ << std::endl;
 #endif
 
     return 3;
   }
 
-  int step3() {
+  int Step3() {
     /*
 Main Zero Search
 
@@ -290,16 +290,16 @@ exists, go to Step 5
  3. If a Z* exists, cover this row and uncover the column of the Z*. Return to
 Step 3.1 to find a new Z
 */
-    if (find_uncovered_in_matrix(0, saverow, savecol)) {
-      mask_matrix(saverow, savecol) = PRIME;  // prime it.
+    if (FindUncoveredInMatrix(0, saverow_, savecol_)) {
+      mask_matrix_(saverow_, savecol_) = PRIME;  // prime it.
     } else {
       return 5;
     }
 
-    for (size_t ncol = 0; ncol < matrix.columns(); ncol++) {
-      if (mask_matrix(saverow, ncol) == STAR) {
-        row_mask[saverow] = true;  // cover this row and
-        col_mask[ncol] =
+    for (size_t ncol = 0; ncol < matrix_.Columns(); ncol++) {
+      if (mask_matrix_(saverow_, ncol) == STAR) {
+        row_mask_[saverow_] = true;  // cover this row and
+        col_mask_[ncol] =
             false;  // uncover the column containing the starred zero
         return 3;   // repeat
       }
@@ -308,21 +308,21 @@ Step 3.1 to find a new Z
     return 4;  // no starred zero in the row containing this primed zero
   }
 
-  int step4() {
-    const size_t rows = matrix.rows(), columns = matrix.columns();
+  int Step4() {
+    const size_t rows = matrix_.Rows(), columns = matrix_.Columns();
 
     // seq contains pairs of row/column values where we have found
     // either a star or a prime that is part of the ``alternating sequence``.
     std::list<std::pair<size_t, size_t>> seq;
     // use saverow, savecol from step 3.
-    std::pair<size_t, size_t> z0(saverow, savecol);
+    std::pair<size_t, size_t> z0(saverow_, savecol_);
     seq.insert(seq.end(), z0);
 
     // We have to find these two pairs:
     std::pair<size_t, size_t> z1(-1, -1);
     std::pair<size_t, size_t> z2n(-1, -1);
 
-    size_t row, col = savecol;
+    size_t row, col = savecol_;
     /*
 Increment Set of Starred Zeros
 
@@ -339,10 +339,10 @@ Increment Set of Starred Zeros
     do {
       madepair = false;
       for (row = 0; row < rows; row++) {
-        if (mask_matrix(row, col) == STAR) {
+        if (mask_matrix_(row, col) == STAR) {
           z1.first = row;
           z1.second = col;
-          if (pair_in_list(z1, seq)) {
+          if (PairInList(z1, seq)) {
             continue;
           }
 
@@ -357,10 +357,10 @@ Increment Set of Starred Zeros
       madepair = false;
 
       for (col = 0; col < columns; col++) {
-        if (mask_matrix(row, col) == PRIME) {
+        if (mask_matrix_(row, col) == PRIME) {
           z2n.first = row;
           z2n.second = col;
-          if (pair_in_list(z2n, seq)) {
+          if (PairInList(z2n, seq)) {
             continue;
           }
           madepair = true;
@@ -373,38 +373,38 @@ Increment Set of Starred Zeros
     for (std::list<std::pair<size_t, size_t>>::iterator i = seq.begin();
          i != seq.end(); i++) {
       // 2. Unstar each starred zero of the sequence.
-      if (mask_matrix(i->first, i->second) == STAR)
-        mask_matrix(i->first, i->second) = NORMAL;
+      if (mask_matrix_(i->first, i->second) == STAR)
+        mask_matrix_(i->first, i->second) = NORMAL;
 
       // 3. Star each primed zero of the sequence,
       // thus increasing the number of starred zeros by one.
-      if (mask_matrix(i->first, i->second) == PRIME)
-        mask_matrix(i->first, i->second) = STAR;
+      if (mask_matrix_(i->first, i->second) == PRIME)
+        mask_matrix_(i->first, i->second) = STAR;
     }
 
     // 4. Erase all primes, uncover all columns and rows,
-    for (size_t row = 0; row < mask_matrix.rows(); row++) {
-      for (size_t col = 0; col < mask_matrix.columns(); col++) {
-        if (mask_matrix(row, col) == PRIME) {
-          mask_matrix(row, col) = NORMAL;
+    for (size_t row = 0; row < mask_matrix_.Rows(); row++) {
+      for (size_t col = 0; col < mask_matrix_.Columns(); col++) {
+        if (mask_matrix_(row, col) == PRIME) {
+          mask_matrix_(row, col) = NORMAL;
         }
       }
     }
 
     for (size_t i = 0; i < rows; i++) {
-      row_mask[i] = false;
+      row_mask_[i] = false;
     }
 
     for (size_t i = 0; i < columns; i++) {
-      col_mask[i] = false;
+      col_mask_[i] = false;
     }
 
     // and return to Step 2.
     return 2;
   }
 
-  int step5() {
-    const size_t rows = matrix.rows(), columns = matrix.columns();
+  int Step5() {
+    const size_t rows = matrix_.Rows(), columns = matrix_.Columns();
     /*
 New Zero Manufactures
 
@@ -415,11 +415,11 @@ New Zero Manufactures
 */
     double h = 100000;  // xyzoylz std::numeric_limits<double>::max();
     for (size_t row = 0; row < rows; row++) {
-      if (!row_mask[row]) {
+      if (!row_mask_[row]) {
         for (size_t col = 0; col < columns; col++) {
-          if (!col_mask[col]) {
-            if (h > matrix(row, col) && matrix(row, col) != 0) {
-              h = matrix(row, col);
+          if (!col_mask_[col]) {
+            if (h > matrix_(row, col) && matrix_(row, col) != 0) {
+              h = matrix_(row, col);
             }
           }
         }
@@ -427,17 +427,17 @@ New Zero Manufactures
     }
 
     for (size_t row = 0; row < rows; row++) {
-      if (row_mask[row]) {
+      if (row_mask_[row]) {
         for (size_t col = 0; col < columns; col++) {
-          matrix(row, col) += h;
+          matrix_(row, col) += h;
         }
       }
     }
 
     for (size_t col = 0; col < columns; col++) {
-      if (!col_mask[col]) {
+      if (!col_mask_[col]) {
         for (size_t row = 0; row < rows; row++) {
-          matrix(row, col) -= h;
+          matrix_(row, col) -= h;
         }
       }
     }
@@ -445,11 +445,11 @@ New Zero Manufactures
     return 3;
   }
 
-  Matrix<int> mask_matrix;
-  Matrix<Data> matrix;
-  bool* row_mask;
-  bool* col_mask;
-  size_t saverow = 0, savecol = 0;
+  Matrix<int> mask_matrix_;
+  Matrix<Data> matrix_;
+  bool* row_mask_;
+  bool* col_mask_;
+  size_t saverow_ = 0, savecol_ = 0;
 };
 
 #endif /* !defined(_MUNKRES_H_) */

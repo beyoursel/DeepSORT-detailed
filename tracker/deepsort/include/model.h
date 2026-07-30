@@ -11,8 +11,8 @@ class DETECTION_ROW {
   DETECTBOX tlwh;
   float confidence;
   FEATURE feature;
-  DETECTBOX to_xyah() const;
-  DETECTBOX to_tlbr() const;
+  DETECTBOX ToXyah() const;
+  DETECTBOX ToTlbr() const;
 };
 
 typedef std::vector<DETECTION_ROW> DETECTIONS;

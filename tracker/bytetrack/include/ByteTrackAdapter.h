@@ -4,7 +4,7 @@
 #include "ITracker.h"
 #include <memory>
 
-class BYTETracker;  // legacy ByteTrack implementation
+class ByteTracker;  // legacy ByteTrack implementation
 
 namespace tracking {
 
@@ -19,7 +19,7 @@ class ByteTrackAdapter : public ITracker {
       const std::vector<detect_result>& detections) override;
 
  private:
-  std::unique_ptr<BYTETracker> impl_;
+  std::unique_ptr<ByteTracker> impl_;
 };
 
 }  // namespace tracking

@@ -8,7 +8,7 @@
 
 class NearNeighborDisMetric;
 
-class tracker {
+class Tracker {
  public:
   NearNeighborDisMetric* metric;
   float max_iou_distance;
@@ -17,28 +17,28 @@ class tracker {
 
   KalmanFilter* kf;
 
-  int _next_idx;
+  int next_idx;
 
  public:
   std::vector<Track> tracks;
-  explicit tracker(const DeepSORTConfig& cfg);
-  void predict();
-  void update(const DETECTIONS& detections);
-  typedef DYNAMICM (tracker::*GATED_METRIC_FUNC)(
+  explicit Tracker(const DeepSORTConfig& cfg);
+  void Predict();
+  void Update(const DETECTIONS& detections);
+  typedef DYNAMICM (Tracker::*GATED_METRIC_FUNC)(
       std::vector<Track>& tracks, const DETECTIONS& dets,
       const std::vector<int>& track_indices,
       const std::vector<int>& detection_indices);
 
  private:
-  void _match(const DETECTIONS& detections, TRACHER_MATCHD& res);
-  void _initiate_track(const DETECTION_ROW& detection);
+  void Match(const DETECTIONS& detections, TRACHER_MATCHD& res);
+  void InitiateTrack(const DETECTION_ROW& detection);
 
  public:
-  DYNAMICM gated_matric(std::vector<Track>& tracks, const DETECTIONS& dets,
+  DYNAMICM GatedMatric(std::vector<Track>& tracks, const DETECTIONS& dets,
                         const std::vector<int>& track_indices,
                         const std::vector<int>& detection_indices);
-  DYNAMICM iou_cost(std::vector<Track>& tracks, const DETECTIONS& dets,
+  DYNAMICM IouCost(std::vector<Track>& tracks, const DETECTIONS& dets,
                     const std::vector<int>& track_indices,
                     const std::vector<int>& detection_indices);
-  Eigen::VectorXf iou(DETECTBOX& bbox, DETECTBOXSS& candidates);
+  Eigen::VectorXf Iou(DETECTBOX& bbox, DETECTBOXSS& candidates);
 };

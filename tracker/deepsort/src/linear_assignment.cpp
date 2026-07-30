@@ -2,17 +2,17 @@
 #include "hungarianoper.h"
 #include <map>
 
-linear_assignment* linear_assignment::instance = NULL;
-linear_assignment::linear_assignment() {}
+LinearAssignment* LinearAssignment::instance_ = NULL;
+LinearAssignment::LinearAssignment() {}
 
-linear_assignment* linear_assignment::getInstance() {
-  if (instance == NULL) instance = new linear_assignment();
-  return instance;
+LinearAssignment* LinearAssignment::GetInstance() {
+  if (instance_ == NULL) instance_ = new LinearAssignment();
+  return instance_;
 }
 
 TRACHER_MATCHD
-linear_assignment::matching_cascade(
-    tracker* distance_metric, tracker::GATED_METRIC_FUNC distance_metric_func,
+LinearAssignment::MatchingCascade(
+    Tracker* distance_metric, Tracker::GATED_METRIC_FUNC distance_metric_func,
     float max_distance, int cascade_depth, std::vector<Track>& tracks,
     const DETECTIONS& detections, std::vector<int>& track_indices,
     std::vector<int> detection_indices) {
@@ -47,7 +47,7 @@ linear_assignment::matching_cascade(
     if (track_indices_l.size() == 0)
       continue;  // Nothing to match at this level.
 
-    TRACHER_MATCHD tmp = min_cost_matching(
+    TRACHER_MATCHD tmp = MinCostMatching(
         distance_metric, distance_metric_func, max_distance, tracks, detections,
         track_indices_l, unmatched_detections);
     unmatched_detections.assign(tmp.unmatched_detections.begin(),
@@ -69,8 +69,8 @@ linear_assignment::matching_cascade(
 }
 
 TRACHER_MATCHD
-linear_assignment::min_cost_matching(
-    tracker* distance_metric, tracker::GATED_METRIC_FUNC distance_metric_func,
+LinearAssignment::MinCostMatching(
+    Tracker* distance_metric, Tracker::GATED_METRIC_FUNC distance_metric_func,
     float max_distance, std::vector<Track>& tracks,
     const DETECTIONS& detections, std::vector<int>& track_indices,
     std::vector<int>& detection_indices) {
@@ -141,7 +141,7 @@ linear_assignment::min_cost_matching(
 }
 
 DYNAMICM
-linear_assignment::gate_cost_matrix(KalmanFilter* kf, DYNAMICM& cost_matrix,
+LinearAssignment::GateCostMatrix(KalmanFilter* kf, DYNAMICM& cost_matrix,
                                     std::vector<Track>& tracks,
                                     const DETECTIONS& detections,
                                     const std::vector<int>& track_indices,
@@ -152,11 +152,11 @@ linear_assignment::gate_cost_matrix(KalmanFilter* kf, DYNAMICM& cost_matrix,
   std::vector<DETECTBOX> measurements;
   for (int i : detection_indices) {
     DETECTION_ROW t = detections[i];
-    measurements.push_back(t.to_xyah());
+    measurements.push_back(t.ToXyah());
   }
   for (size_t i = 0; i < track_indices.size(); i++) {
     Track& track = tracks[track_indices[i]];
-    Eigen::Matrix<float, 1, -1> gating_distance = kf->gating_distance(
+    Eigen::Matrix<float, 1, -1> gating_distance = kf->GatingDistance(
         track.mean, track.covariance, measurements, only_position);
     for (int j = 0; j < gating_distance.cols(); j++) {
       if (gating_distance(0, j) > gating_threshold)

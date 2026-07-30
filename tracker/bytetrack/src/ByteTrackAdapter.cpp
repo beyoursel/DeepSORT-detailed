@@ -5,7 +5,7 @@
 namespace tracking {
 
 ByteTrackAdapter::ByteTrackAdapter(const ByteTrackConfig& cfg)
-    : impl_(new BYTETracker(cfg)) {}
+    : impl_(new ByteTracker(cfg)) {}
 
 ByteTrackAdapter::~ByteTrackAdapter() = default;
 
@@ -14,7 +14,7 @@ std::vector<TrackResult> ByteTrackAdapter::Update(
   ScopedTimer timer("track");
 
   std::vector<TrackResult> out;
-  std::vector<STrack> stracks = impl_->update(detections);
+  std::vector<STrack> stracks = impl_->Update(detections);
   for (const STrack& st : stracks) {
     const std::vector<float>& tlwh = st.tlwh;
     bool vertical = tlwh[2] / tlwh[3] > 1.6;

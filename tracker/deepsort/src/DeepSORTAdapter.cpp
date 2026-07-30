@@ -6,7 +6,7 @@
 namespace tracking {
 
 DeepSORTAdapter::DeepSORTAdapter(const DeepSORTConfig& cfg)
-    : impl_(new ::tracker(cfg)) {}
+    : impl_(new ::Tracker(cfg)) {}
 
 DeepSORTAdapter::~DeepSORTAdapter() = default;
 
@@ -25,16 +25,16 @@ std::vector<TrackResult> DeepSORTAdapter::Update(
   std::vector<TrackResult> out;
   // May throw on ReID model load failure (first call); let the caller handle
   // it.
-  if (!FeatureTensor::getInstance()->getRectsFeature(frame, detections)) {
+  if (!FeatureTensor::GetInstance()->GetRectsFeature(frame, detections)) {
     return out;
   }
 
-  impl_->predict();
-  impl_->update(detections);
+  impl_->Predict();
+  impl_->Update(detections);
 
   for (Track& track : impl_->tracks) {
-    if (!track.is_confirmed() || track.time_since_update > 1) continue;
-    DETECTBOX tlwh = track.to_tlwh();
+    if (!track.IsConfirmed() || track.time_since_update > 1) continue;
+    DETECTBOX tlwh = track.ToTlwh();
     out.push_back(
         {track.track_id, cv::Rect_<float>(tlwh(0), tlwh(1), tlwh(2), tlwh(3))});
   }

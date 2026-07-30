@@ -12,7 +12,7 @@ Eigen::Matrix<float, -1, 2, Eigen::RowMajor> HungarianOper::Solve(
   }
   // Munkres get matrix;
   Munkres<double> m;
-  m.solve(matrix);
+  m.Solve(matrix);
 
   //
   std::vector<std::pair<int, int>> pairs;

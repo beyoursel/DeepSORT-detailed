@@ -55,13 +55,13 @@ class Track {
  public:
   Track(KAL_MEAN& mean, KAL_COVA& covariance, int track_id, int n_init,
         int max_age, const FEATURE& feature);
-  void predit(KalmanFilter* kf);
-  void update(KalmanFilter* const kf, const DETECTION_ROW& detection);
-  void mark_missed();
-  bool is_confirmed();
-  bool is_deleted();
-  bool is_tentative();
-  DETECTBOX to_tlwh();
+  void Predict(KalmanFilter* kf);
+  void Update(KalmanFilter* const kf, const DETECTION_ROW& detection);
+  void MarkMissed();
+  bool IsConfirmed();
+  bool IsDeleted();
+  bool IsTentative();
+  DETECTBOX ToTlwh();
   int time_since_update;
   int track_id;
   FEATURESS features;
@@ -70,10 +70,10 @@ class Track {
 
   int hits;
   int age;
-  int _n_init;
-  int _max_age;
+  int n_init;
+  int max_age;
   TrackState state;
 
  private:
-  void featuresAppendOne(const FEATURE& f);
+  void FeaturesAppendOne(const FEATURE& f);
 };
