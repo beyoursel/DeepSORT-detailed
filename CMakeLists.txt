@@ -65,6 +65,7 @@ add_executable(YoloTracker
 
     detector/src/detector_utils.cpp
     detector/src/DetectorFactory.cpp
+    detector/yolo/src/YOLODetectorBase.cpp
     detector/yolo/src/YOLOv5Detector.cpp
     detector/yolo/src/YOLOv8Detector.cpp
     detector/yolo/src/YOLOv26Detector.cpp
@@ -112,6 +113,7 @@ add_executable(test_detector
 
     detector/src/detector_utils.cpp
     detector/src/DetectorFactory.cpp
+    detector/yolo/src/YOLODetectorBase.cpp
     detector/yolo/src/YOLOv5Detector.cpp
     detector/yolo/src/YOLOv8Detector.cpp
     detector/yolo/src/YOLOv26Detector.cpp
