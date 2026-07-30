@@ -197,12 +197,9 @@ int main(int argc, char* argv[]) {
   std::shared_ptr<detector::IDetector> detector;
   try {
     detector = detector::DetectorFactory::Create(cfg->detector.type);
+    detector->Init();
   } catch (const std::exception& e) {
-    std::cerr << "Failed to create detector: " << e.what() << std::endl;
-    return -1;
-  }
-  if (!detector->Init()) {
-    std::cerr << "Detector initialization failed, exiting." << std::endl;
+    std::cerr << "Failed to initialize detector: " << e.what() << std::endl;
     return -1;
   }
 

@@ -12,7 +12,7 @@
 
 namespace detector {
 
-bool YOLOv5Detector::Init() {
+void YOLOv5Detector::Init() {
   const DetectorConfig& cfg = AppConfig::GetInstance()->detector;
 
   confidence_threshold_ = cfg.confidence_threshold;
@@ -30,18 +30,16 @@ bool YOLOv5Detector::Init() {
 
   backend_ = backend::BackendFactory::Create(backend_cfg);
   if (!backend_->LoadModel(backend_cfg.model_path)) {
-    std::cerr << "YOLOv5Detector init failed: cannot load model" << std::endl;
-    return false;
+    throw std::runtime_error("YOLOv5Detector init failed: cannot load model " +
+                             backend_cfg.model_path);
   }
-
-  return true;
 }
 
 void YOLOv5Detector::LoadClasses() {
   classes_.clear();
   std::ifstream ifs(classes_path_);
   if (!ifs.is_open()) {
-    CV_Error(cv::Error::StsError, "File " + classes_path_ + " not found");
+    throw std::runtime_error("File " + classes_path_ + " not found");
   }
   std::string line;
   while (std::getline(ifs, line)) {
@@ -79,8 +77,7 @@ void YOLOv5Detector::Detect(cv::Mat& frame,
     ScopedTimer timer("det_infer");
     if (!backend_->Run("images", input_tensor_values, input_shape, "output",
                        output_data, output_shape)) {
-      std::cerr << "YOLOv5 inference failed" << std::endl;
-      return;
+      throw std::runtime_error("YOLOv5 inference failed");
     }
   }
 

@@ -11,7 +11,7 @@
 
 namespace detector {
 
-bool YOLOv26Detector::Init() {
+void YOLOv26Detector::Init() {
   const DetectorConfig& cfg = AppConfig::GetInstance()->detector;
 
   confidence_threshold_ = cfg.confidence_threshold;
@@ -29,11 +29,9 @@ bool YOLOv26Detector::Init() {
 
   backend_ = backend::BackendFactory::Create(backend_cfg);
   if (!backend_->LoadModel(backend_cfg.model_path)) {
-    std::cerr << "YOLOv26Detector init failed: cannot load model" << std::endl;
-    return false;
+    throw std::runtime_error("YOLOv26Detector init failed: cannot load model " +
+                             backend_cfg.model_path);
   }
-
-  return true;
 }
 
 void YOLOv26Detector::LoadClasses() {
@@ -80,8 +78,7 @@ void YOLOv26Detector::Detect(cv::Mat& frame,
     ScopedTimer timer("det_infer");
     if (!backend_->Run("images", input_tensor_values, input_shape, "output0",
                        output_data, output_shape)) {
-      std::cerr << "YOLOv26 inference failed" << std::endl;
-      return;
+      throw std::runtime_error("YOLOv26 inference failed");
     }
   }
 

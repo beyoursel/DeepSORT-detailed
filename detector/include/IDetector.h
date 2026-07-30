@@ -17,7 +17,8 @@ class IDetector {
  public:
   virtual ~IDetector() = default;
 
-  virtual bool Init() = 0;
+  // Throws std::runtime_error on initialization failure (fail-fast).
+  virtual void Init() = 0;
   virtual void Detect(cv::Mat& frame, std::vector<detect_result>& results) = 0;
   virtual void DrawFrame(cv::Mat& frame,
                          std::vector<detect_result>& results) = 0;

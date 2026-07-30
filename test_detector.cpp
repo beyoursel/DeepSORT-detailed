@@ -23,10 +23,12 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  std::shared_ptr<detector::IDetector> detector =
-      detector::DetectorFactory::Create(cfg->detector.type);
-  if (!detector->Init()) {
-    std::cerr << "Detector initialization failed, exiting." << std::endl;
+  std::shared_ptr<detector::IDetector> detector;
+  try {
+    detector = detector::DetectorFactory::Create(cfg->detector.type);
+    detector->Init();
+  } catch (const std::exception& e) {
+    std::cerr << "Failed to initialize detector: " << e.what() << std::endl;
     return -1;
   }
 

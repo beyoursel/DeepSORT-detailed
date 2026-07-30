@@ -13,7 +13,7 @@ class YOLOv8Detector : public IDetector {
   YOLOv8Detector() = default;
   ~YOLOv8Detector() override = default;
 
-  bool Init() override;
+  void Init() override;
   void Detect(cv::Mat& frame, std::vector<detect_result>& results) override;
   void DrawFrame(cv::Mat& frame, std::vector<detect_result>& results) override;
   size_t NumClasses() const override { return classes_.size(); }

@@ -13,7 +13,7 @@ class YOLOv26Detector : public IDetector {
   YOLOv26Detector() = default;
   ~YOLOv26Detector() override = default;
 
-  bool Init() override;
+  void Init() override;
   void Detect(cv::Mat& frame, std::vector<detect_result>& results) override;
   void DrawFrame(cv::Mat& frame, std::vector<detect_result>& results) override;
   size_t NumClasses() const override { return classes_.size(); }

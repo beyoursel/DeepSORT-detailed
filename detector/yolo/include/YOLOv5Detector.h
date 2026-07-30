@@ -16,7 +16,7 @@ class YOLOv5Detector : public IDetector {
   YOLOv5Detector() = default;
   ~YOLOv5Detector() override = default;
 
-  bool Init() override;
+  void Init() override;
   void Detect(cv::Mat& frame, std::vector<detect_result>& results) override;
   void DrawFrame(cv::Mat& frame, std::vector<detect_result>& results) override;
   size_t NumClasses() const override { return classes_.size(); }
