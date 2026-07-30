@@ -3,7 +3,7 @@
 
 namespace detector {
 
-cv::Mat letterbox(const cv::Mat& src, int target_width, int target_height,
+cv::Mat Letterbox(const cv::Mat& src, int target_width, int target_height,
                   ScaleInfo& scale_info) {
   int src_w = src.cols;
   int src_h = src.rows;
@@ -32,11 +32,11 @@ cv::Mat letterbox(const cv::Mat& src, int target_width, int target_height,
   return dst;
 }
 
-std::vector<detect_result> nms_filter(std::vector<cv::Rect>& boxes,
-                                      std::vector<float>& confidences,
-                                      std::vector<int>& classIds,
-                                      float confidence_threshold,
-                                      float nms_threshold) {
+std::vector<detect_result> NmsFilter(std::vector<cv::Rect>& boxes,
+                                     std::vector<float>& confidences,
+                                     std::vector<int>& classIds,
+                                     float confidence_threshold,
+                                     float nms_threshold) {
   std::vector<detect_result> results;
   std::vector<int> indexes;
   cv::dnn::NMSBoxes(boxes, confidences, confidence_threshold, nms_threshold,
@@ -54,8 +54,8 @@ std::vector<detect_result> nms_filter(std::vector<cv::Rect>& boxes,
   return results;
 }
 
-void draw_results(cv::Mat& frame, std::vector<detect_result>& results,
-                  const std::vector<std::string>& classes) {
+void DrawResults(cv::Mat& frame, std::vector<detect_result>& results,
+                 const std::vector<std::string>& classes) {
   for (const auto& dr : results) {
     cv::rectangle(frame, dr.box, cv::Scalar(0, 0, 255), 2, 8);
     cv::rectangle(frame, cv::Point(dr.box.tl().x, dr.box.tl().y - 20),

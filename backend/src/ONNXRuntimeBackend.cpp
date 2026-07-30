@@ -4,7 +4,7 @@
 
 namespace backend {
 
-bool ONNXRuntimeBackend::init(const BackendConfig& cfg) {
+bool ONNXRuntimeBackend::Init(const BackendConfig& cfg) {
   cfg_ = cfg;
 
   try {
@@ -27,12 +27,12 @@ bool ONNXRuntimeBackend::init(const BackendConfig& cfg) {
     initialized_ = true;
     return true;
   } catch (const std::exception& e) {
-    std::cerr << "ONNXRuntimeBackend::init failed: " << e.what() << std::endl;
+    std::cerr << "ONNXRuntimeBackend::Init failed: " << e.what() << std::endl;
     return false;
   }
 }
 
-bool ONNXRuntimeBackend::load_model(const std::string& model_path) {
+bool ONNXRuntimeBackend::LoadModel(const std::string& model_path) {
   if (!initialized_) {
     std::cerr << "Backend not initialized" << std::endl;
     return false;
@@ -50,7 +50,7 @@ bool ONNXRuntimeBackend::load_model(const std::string& model_path) {
   }
 }
 
-bool ONNXRuntimeBackend::run(const std::string& input_name,
+bool ONNXRuntimeBackend::Run(const std::string& input_name,
                              const std::vector<float>& input_data,
                              const std::vector<int64_t>& input_shape,
                              const std::string& output_name,
@@ -101,7 +101,7 @@ bool ONNXRuntimeBackend::run(const std::string& input_name,
 
     return true;
   } catch (const std::exception& e) {
-    std::cerr << "ONNXRuntimeBackend::run failed: " << e.what() << std::endl;
+    std::cerr << "ONNXRuntimeBackend::Run failed: " << e.what() << std::endl;
     return false;
   }
 }

@@ -17,11 +17,11 @@ class IDetector {
  public:
   virtual ~IDetector() = default;
 
-  virtual bool init() = 0;
-  virtual void detect(cv::Mat& frame, std::vector<detect_result>& results) = 0;
-  virtual void draw_frame(cv::Mat& frame,
-                          std::vector<detect_result>& results) = 0;
-  virtual size_t num_classes() const = 0;
+  virtual bool Init() = 0;
+  virtual void Detect(cv::Mat& frame, std::vector<detect_result>& results) = 0;
+  virtual void DrawFrame(cv::Mat& frame,
+                         std::vector<detect_result>& results) = 0;
+  virtual size_t NumClasses() const = 0;
 };
 
 }  // namespace detector

@@ -23,15 +23,15 @@ class ScopedTimer {
 };
 
 // 简单的单次计时函数：直接返回毫秒，不自动打印
-inline double elapsed_ms(const std::chrono::steady_clock::time_point& start) {
+inline double ElapsedMs(const std::chrono::steady_clock::time_point& start) {
   return std::chrono::duration_cast<std::chrono::microseconds>(
              std::chrono::steady_clock::now() - start)
              .count() /
          1000.0;
 }
 
-inline double elapsed_ms(const std::chrono::steady_clock::time_point& start,
-                         const std::chrono::steady_clock::time_point& end) {
+inline double ElapsedMs(const std::chrono::steady_clock::time_point& start,
+                        const std::chrono::steady_clock::time_point& end) {
   return std::chrono::duration_cast<std::chrono::microseconds>(end - start)
              .count() /
          1000.0;

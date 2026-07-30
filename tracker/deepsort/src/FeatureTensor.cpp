@@ -20,7 +20,7 @@ FeatureTensor* FeatureTensor::getInstance() {
 }
 
 FeatureTensor::FeatureTensor() {
-  const DeepSORTConfig& cfg = AppConfig::getInstance()->deepsort;
+  const DeepSORTConfig& cfg = AppConfig::GetInstance()->deepsort;
 
   results_.resize(cfg.feature_dim);
   output_shape_ = {1, cfg.feature_dim};
@@ -28,10 +28,10 @@ FeatureTensor::FeatureTensor() {
   backend::BackendConfig backend_cfg;
   backend_cfg.type = cfg.backend;
   backend_cfg.model_path = cfg.feature_model_path;
-  backend_cfg.device_id = AppConfig::getInstance()->backend.device_id;
+  backend_cfg.device_id = AppConfig::GetInstance()->backend.device_id;
 
-  backend_ = backend::BackendFactory::create(backend_cfg);
-  if (!backend_->load_model(backend_cfg.model_path)) {
+  backend_ = backend::BackendFactory::Create(backend_cfg);
+  if (!backend_->LoadModel(backend_cfg.model_path)) {
     throw std::runtime_error("FeatureTensor init failed: cannot load model " +
                              backend_cfg.model_path);
   }
@@ -52,7 +52,7 @@ bool FeatureTensor::init() {
   std::vector<float> dummy_output;
   std::vector<int64_t> output_shape;
 
-  if (!backend_->run("input", dummy_input, input_shape_, "output", dummy_output,
+  if (!backend_->Run("input", dummy_input, input_shape_, "output", dummy_output,
                      output_shape)) {
     std::cerr << "FeatureTensor init failed: dummy inference failed"
               << std::endl;
@@ -133,7 +133,7 @@ bool FeatureTensor::getRectsFeature(const cv::Mat& img, DETECTIONS& d) {
     size_t inputTensorSize;
     preprocess(mattmp, inputTensorValues, inputTensorSize);
 
-    if (!backend_->run("input", inputTensorValues, inputDims_, "output",
+    if (!backend_->Run("input", inputTensorValues, inputDims_, "output",
                        results_, output_shape_)) {
       std::cerr << "FeatureTensor inference failed" << std::endl;
       return false;

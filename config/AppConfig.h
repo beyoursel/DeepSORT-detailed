@@ -26,7 +26,8 @@ struct DeepSORTConfig {
 };
 
 struct ByteTrackConfig {
-  int track_buffer;  // frames a lost track is kept alive (like DeepSORT max_age)
+  int track_buffer;  // frames a lost track is kept alive (like DeepSORT
+                     // max_age)
   float track_thresh;
   float high_thresh;
   float match_thresh;
@@ -58,9 +59,9 @@ struct TrackerConfig {
 
 class AppConfig {
  public:
-  static AppConfig* getInstance();
+  static AppConfig* GetInstance();
 
-  bool load(const std::string& yaml_path);
+  bool Load(const std::string& yaml_path);
 
   backend::BackendConfig backend;
   DetectorConfig detector;
@@ -76,5 +77,5 @@ class AppConfig {
   AppConfig(const AppConfig&) = delete;
   AppConfig& operator=(const AppConfig&) = delete;
 
-  static AppConfig* instance;
+  static AppConfig* instance_;
 };

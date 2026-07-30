@@ -8,7 +8,7 @@ namespace detector {
 
 class DetectorFactory {
  public:
-  static std::shared_ptr<IDetector> create(const std::string& type);
+  static std::shared_ptr<IDetector> Create(const std::string& type);
 };
 
 }  // namespace detector

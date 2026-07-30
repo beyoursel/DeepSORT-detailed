@@ -2,12 +2,14 @@
 #include "BYTETracker.h"
 #include "Timer.h"
 
+namespace tracking {
+
 ByteTrackAdapter::ByteTrackAdapter(const ByteTrackConfig& cfg)
     : impl_(new BYTETracker(cfg)) {}
 
 ByteTrackAdapter::~ByteTrackAdapter() = default;
 
-std::vector<TrackResult> ByteTrackAdapter::update(
+std::vector<TrackResult> ByteTrackAdapter::Update(
     const cv::Mat& /*frame*/, const std::vector<detect_result>& detections) {
   ScopedTimer timer("track");
 
@@ -23,3 +25,5 @@ std::vector<TrackResult> ByteTrackAdapter::update(
   }
   return out;
 }
+
+}  // namespace tracking

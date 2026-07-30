@@ -6,16 +6,20 @@
 
 class tracker;  // legacy DeepSORT tracker
 
+namespace tracking {
+
 // ITracker adapter around the legacy DeepSORT implementation.
 class DeepSORTAdapter : public ITracker {
  public:
   explicit DeepSORTAdapter(const DeepSORTConfig& cfg);
   ~DeepSORTAdapter() override;
 
-  std::vector<TrackResult> update(
+  std::vector<TrackResult> Update(
       const cv::Mat& frame,
       const std::vector<detect_result>& detections) override;
 
  private:
-  std::unique_ptr<tracker> impl_;
+  std::unique_ptr<::tracker> impl_;
 };
+
+}  // namespace tracking

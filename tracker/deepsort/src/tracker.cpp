@@ -75,7 +75,7 @@ void tracker::update(const DETECTIONS& detections) {
 
   vector<int> active_targets;
   vector<TRACKER_DATA> tid_features;
-  int feature_dim = AppConfig::getInstance()->deepsort.feature_dim;
+  int feature_dim = AppConfig::GetInstance()->deepsort.feature_dim;
   for (Track& track : tracks) {
     if (track.is_confirmed() == false) continue;
     active_targets.push_back(track.track_id);
@@ -146,7 +146,7 @@ DYNAMICM tracker::gated_matric(std::vector<Track>& tracks,
                                const DETECTIONS& dets,
                                const std::vector<int>& track_indices,
                                const std::vector<int>& detection_indices) {
-  int feature_dim = AppConfig::getInstance()->deepsort.feature_dim;
+  int feature_dim = AppConfig::GetInstance()->deepsort.feature_dim;
   FEATURESS features(detection_indices.size(), feature_dim);
   int pos = 0;
   for (int i : detection_indices) {

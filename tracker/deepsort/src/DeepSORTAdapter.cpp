@@ -3,12 +3,14 @@
 #include "Timer.h"
 #include "tracker.h"
 
+namespace tracking {
+
 DeepSORTAdapter::DeepSORTAdapter(const DeepSORTConfig& cfg)
-    : impl_(new tracker(cfg)) {}
+    : impl_(new ::tracker(cfg)) {}
 
 DeepSORTAdapter::~DeepSORTAdapter() = default;
 
-std::vector<TrackResult> DeepSORTAdapter::update(
+std::vector<TrackResult> DeepSORTAdapter::Update(
     const cv::Mat& frame, const std::vector<detect_result>& dets) {
   ScopedTimer timer("track");
 
@@ -38,3 +40,5 @@ std::vector<TrackResult> DeepSORTAdapter::update(
   }
   return out;
 }
+
+}  // namespace tracking

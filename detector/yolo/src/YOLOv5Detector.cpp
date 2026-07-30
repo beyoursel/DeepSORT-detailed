@@ -12,24 +12,24 @@
 
 namespace detector {
 
-bool YOLOv5Detector::init() {
-  const DetectorConfig& cfg = AppConfig::getInstance()->detector;
+bool YOLOv5Detector::Init() {
+  const DetectorConfig& cfg = AppConfig::GetInstance()->detector;
 
   confidence_threshold_ = cfg.confidence_threshold;
   nms_threshold_ = cfg.nms_threshold;
   model_input_width_ = cfg.input_width;
   model_input_height_ = cfg.input_height;
-  classes_path_ = AppConfig::getInstance()->dataset.coco_labels;
+  classes_path_ = AppConfig::GetInstance()->dataset.coco_labels;
 
-  load_classes();
+  LoadClasses();
 
   backend::BackendConfig backend_cfg;
   backend_cfg.type = cfg.backend;
   backend_cfg.model_path = cfg.model_path;
-  backend_cfg.device_id = AppConfig::getInstance()->backend.device_id;
+  backend_cfg.device_id = AppConfig::GetInstance()->backend.device_id;
 
-  backend_ = backend::BackendFactory::create(backend_cfg);
-  if (!backend_->load_model(backend_cfg.model_path)) {
+  backend_ = backend::BackendFactory::Create(backend_cfg);
+  if (!backend_->LoadModel(backend_cfg.model_path)) {
     std::cerr << "YOLOv5Detector init failed: cannot load model" << std::endl;
     return false;
   }
@@ -37,7 +37,7 @@ bool YOLOv5Detector::init() {
   return true;
 }
 
-void YOLOv5Detector::load_classes() {
+void YOLOv5Detector::LoadClasses() {
   classes_.clear();
   std::ifstream ifs(classes_path_);
   if (!ifs.is_open()) {
@@ -49,7 +49,7 @@ void YOLOv5Detector::load_classes() {
   }
 }
 
-std::vector<float> YOLOv5Detector::preprocess(const cv::Mat& letterboxed) {
+std::vector<float> YOLOv5Detector::Preprocess(const cv::Mat& letterboxed) {
   cv::Mat blob;
   cv::dnn::blobFromImage(letterboxed, blob, 1.0 / 255.0,
                          cv::Size(model_input_width_, model_input_height_),
@@ -57,7 +57,7 @@ std::vector<float> YOLOv5Detector::preprocess(const cv::Mat& letterboxed) {
   return std::vector<float>(blob.begin<float>(), blob.end<float>());
 }
 
-void YOLOv5Detector::detect(cv::Mat& frame,
+void YOLOv5Detector::Detect(cv::Mat& frame,
                             std::vector<detect_result>& results) {
   results.clear();
 
@@ -67,8 +67,8 @@ void YOLOv5Detector::detect(cv::Mat& frame,
   {
     ScopedTimer timer("det_pre");
     letterboxed =
-        letterbox(frame, model_input_width_, model_input_height_, scale_info);
-    input_tensor_values = preprocess(letterboxed);
+        Letterbox(frame, model_input_width_, model_input_height_, scale_info);
+    input_tensor_values = Preprocess(letterboxed);
   }
 
   std::vector<int64_t> input_shape = {1, 3, model_input_height_,
@@ -77,7 +77,7 @@ void YOLOv5Detector::detect(cv::Mat& frame,
   std::vector<int64_t> output_shape;
   {
     ScopedTimer timer("det_infer");
-    if (!backend_->run("images", input_tensor_values, input_shape, "output0",
+    if (!backend_->Run("images", input_tensor_values, input_shape, "output",
                        output_data, output_shape)) {
       std::cerr << "YOLOv5 inference failed" << std::endl;
       return;
@@ -137,14 +137,14 @@ void YOLOv5Detector::detect(cv::Mat& frame,
       }
     }
 
-    results = nms_filter(boxes, confidences, classIds, confidence_threshold_,
-                         nms_threshold_);
+    results = NmsFilter(boxes, confidences, classIds, confidence_threshold_,
+                        nms_threshold_);
   }
 }
 
-void YOLOv5Detector::draw_frame(cv::Mat& frame,
-                                std::vector<detect_result>& results) {
-  draw_results(frame, results, classes_);
+void YOLOv5Detector::DrawFrame(cv::Mat& frame,
+                               std::vector<detect_result>& results) {
+  DrawResults(frame, results, classes_);
 }
 
 }  // namespace detector

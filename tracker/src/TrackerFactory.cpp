@@ -4,8 +4,10 @@
 #include "DeepSORTAdapter.h"
 #include <stdexcept>
 
-std::unique_ptr<ITracker> TrackerFactory::create(const std::string& type) {
-  AppConfig* cfg = AppConfig::getInstance();
+namespace tracking {
+
+std::unique_ptr<ITracker> TrackerFactory::Create(const std::string& type) {
+  AppConfig* cfg = AppConfig::GetInstance();
   if (type == "deepsort") {
     return std::unique_ptr<ITracker>(new DeepSORTAdapter(cfg->deepsort));
   }
@@ -14,3 +16,5 @@ std::unique_ptr<ITracker> TrackerFactory::create(const std::string& type) {
   }
   throw std::runtime_error("Unsupported tracker type: " + type);
 }
+
+}  // namespace tracking

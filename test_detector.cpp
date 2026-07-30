@@ -17,15 +17,15 @@ int main(int argc, char* argv[]) {
     config_path = argv[1];
   }
 
-  AppConfig* cfg = AppConfig::getInstance();
-  if (!cfg->load(config_path)) {
+  AppConfig* cfg = AppConfig::GetInstance();
+  if (!cfg->Load(config_path)) {
     std::cerr << "Failed to load config from " << config_path << std::endl;
     return -1;
   }
 
   std::shared_ptr<detector::IDetector> detector =
-      detector::DetectorFactory::create(cfg->detector.type);
-  if (!detector->init()) {
+      detector::DetectorFactory::Create(cfg->detector.type);
+  if (!detector->Init()) {
     std::cerr << "Detector initialization failed, exiting." << std::endl;
     return -1;
   }
@@ -40,13 +40,13 @@ int main(int argc, char* argv[]) {
   }
 
   auto start = std::chrono::system_clock::now();
-  detector->detect(frame, results);
+  detector->Detect(frame, results);
   auto end = std::chrono::system_clock::now();
   auto detect_time =
       std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
           .count();
 
-  detector->draw_frame(frame, results);
+  detector->DrawFrame(frame, results);
 
   std::string window_title = "Detector: " + cfg->detector.type;
   cv::imshow(window_title, frame);

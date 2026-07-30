@@ -8,7 +8,7 @@ namespace backend {
 
 class BackendFactory {
  public:
-  static std::shared_ptr<IBackend> create(const BackendConfig& cfg);
+  static std::shared_ptr<IBackend> Create(const BackendConfig& cfg);
 };
 
 }  // namespace backend

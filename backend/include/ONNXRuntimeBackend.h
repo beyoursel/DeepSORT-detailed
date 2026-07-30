@@ -13,10 +13,10 @@ class ONNXRuntimeBackend : public IBackend {
   ONNXRuntimeBackend() = default;
   ~ONNXRuntimeBackend() override = default;
 
-  bool init(const BackendConfig& cfg) override;
-  bool load_model(const std::string& model_path) override;
+  bool Init(const BackendConfig& cfg) override;
+  bool LoadModel(const std::string& model_path) override;
 
-  bool run(const std::string& input_name, const std::vector<float>& input_data,
+  bool Run(const std::string& input_name, const std::vector<float>& input_data,
            const std::vector<int64_t>& input_shape,
            const std::string& output_name, std::vector<float>& output_data,
            std::vector<int64_t>& output_shape) override;

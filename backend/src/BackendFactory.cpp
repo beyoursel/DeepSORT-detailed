@@ -4,10 +4,10 @@
 
 namespace backend {
 
-std::shared_ptr<IBackend> BackendFactory::create(const BackendConfig& cfg) {
+std::shared_ptr<IBackend> BackendFactory::Create(const BackendConfig& cfg) {
   if (cfg.type == "onnxruntime_cpu" || cfg.type == "onnxruntime_gpu") {
     auto backend = std::make_shared<ONNXRuntimeBackend>();
-    if (!backend->init(cfg)) {
+    if (!backend->Init(cfg)) {
       throw std::runtime_error("Failed to initialize ONNXRuntime backend: " +
                                cfg.type);
     }

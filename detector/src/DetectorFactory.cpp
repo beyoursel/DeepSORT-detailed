@@ -6,7 +6,7 @@
 
 namespace detector {
 
-std::shared_ptr<IDetector> DetectorFactory::create(const std::string& type) {
+std::shared_ptr<IDetector> DetectorFactory::Create(const std::string& type) {
   if (type == "yolov5") {
     return std::make_shared<YOLOv5Detector>();
   }
