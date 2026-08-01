@@ -75,7 +75,7 @@ void Tracker::Update(const DETECTIONS& detections) {
 
   vector<int> active_targets;
   vector<TRACKER_DATA> tid_features;
-  int feature_dim = AppConfig::GetInstance()->deepsort.feature_dim;
+  int feature_dim = AppConfig::GetInstance().deepsort.feature_dim;
   for (Track& track : tracks) {
     if (track.IsConfirmed() == false) continue;
     active_targets.push_back(track.track_id);
@@ -98,7 +98,7 @@ void Tracker::Match(const DETECTIONS& detections, TRACHER_MATCHD& res) {
     idx++;
   }
 
-  TRACHER_MATCHD matcha = LinearAssignment::GetInstance()->MatchingCascade(
+  TRACHER_MATCHD matcha = LinearAssignment::GetInstance().MatchingCascade(
       this, &Tracker::GatedMatric, this->metric->mating_threshold,
       this->max_age, this->tracks, detections, confirmed_tracks);
   vector<int> iou_track_candidates;
@@ -115,7 +115,7 @@ void Tracker::Match(const DETECTIONS& detections, TRACHER_MATCHD& res) {
     }
     ++it;
   }
-  TRACHER_MATCHD matchb = LinearAssignment::GetInstance()->MinCostMatching(
+  TRACHER_MATCHD matchb = LinearAssignment::GetInstance().MinCostMatching(
       this, &Tracker::IouCost, this->max_iou_distance, this->tracks,
       detections, iou_track_candidates, matcha.unmatched_detections);
   // get result:
@@ -146,7 +146,7 @@ DYNAMICM Tracker::GatedMatric(std::vector<Track>& tracks,
                                const DETECTIONS& dets,
                                const std::vector<int>& track_indices,
                                const std::vector<int>& detection_indices) {
-  int feature_dim = AppConfig::GetInstance()->deepsort.feature_dim;
+  int feature_dim = AppConfig::GetInstance().deepsort.feature_dim;
   FEATURESS features(detection_indices.size(), feature_dim);
   int pos = 0;
   for (int i : detection_indices) {
@@ -157,7 +157,7 @@ DYNAMICM Tracker::GatedMatric(std::vector<Track>& tracks,
     targets.push_back(tracks[i].track_id);
   }
   DYNAMICM cost_matrix = this->metric->Distance(features, targets);
-  DYNAMICM res = LinearAssignment::GetInstance()->GateCostMatrix(
+  DYNAMICM res = LinearAssignment::GetInstance().GateCostMatrix(
       this->kf, cost_matrix, tracks, dets, track_indices, detection_indices);
   return res;
 }

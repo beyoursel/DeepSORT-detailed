@@ -17,27 +17,27 @@ int main(int argc, char* argv[]) {
     config_path = argv[1];
   }
 
-  AppConfig* cfg = AppConfig::GetInstance();
-  if (!cfg->Load(config_path)) {
+  AppConfig& cfg = AppConfig::GetInstance();
+  if (!cfg.Load(config_path)) {
     std::cerr << "Failed to load config from " << config_path << std::endl;
     return -1;
   }
 
   std::shared_ptr<detector::IDetector> detector;
   try {
-    detector = detector::DetectorFactory::Create(cfg->detector.type);
+    detector = detector::DetectorFactory::Create(cfg.detector.type);
     detector->Init();
   } catch (const std::exception& e) {
     std::cerr << "Failed to initialize detector: " << e.what() << std::endl;
     return -1;
   }
 
-  std::cout << "Detector type: " << cfg->detector.type << std::endl;
+  std::cout << "Detector type: " << cfg.detector.type << std::endl;
 
   std::vector<detect_result> results;
-  cv::Mat frame = cv::imread(cfg->input.source);
+  cv::Mat frame = cv::imread(cfg.input.source);
   if (frame.empty()) {
-    std::cerr << "Failed to load image: " << cfg->input.source << std::endl;
+    std::cerr << "Failed to load image: " << cfg.input.source << std::endl;
     return -1;
   }
 
@@ -50,10 +50,10 @@ int main(int argc, char* argv[]) {
 
   detector->DrawFrame(frame, results);
 
-  std::string window_title = "Detector: " + cfg->detector.type;
+  std::string window_title = "Detector: " + cfg.detector.type;
   cv::imshow(window_title, frame);
 
-  cv::imwrite(cfg->output.image, frame);
+  cv::imwrite(cfg.output.image, frame);
 
   results.clear();
 

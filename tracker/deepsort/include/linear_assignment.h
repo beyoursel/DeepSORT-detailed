@@ -9,10 +9,9 @@ class LinearAssignment {
   LinearAssignment();
   LinearAssignment(const LinearAssignment&);
   LinearAssignment& operator=(const LinearAssignment&);
-  static LinearAssignment* instance_;
 
  public:
-  static LinearAssignment* GetInstance();
+  static LinearAssignment& GetInstance();
   TRACHER_MATCHD MatchingCascade(
       Tracker* distance_metric, Tracker::GATED_METRIC_FUNC distance_metric_func,
       float max_distance, int cascade_depth, std::vector<Track>& tracks,

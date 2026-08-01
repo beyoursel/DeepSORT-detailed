@@ -2,13 +2,9 @@
 #include <iostream>
 #include <stdexcept>
 
-AppConfig* AppConfig::instance_ = nullptr;
-
-AppConfig* AppConfig::GetInstance() {
-  if (instance_ == nullptr) {
-    instance_ = new AppConfig();
-  }
-  return instance_;
+AppConfig& AppConfig::GetInstance() {
+  static AppConfig instance;  // thread-safe since C++11
+  return instance;
 }
 
 static std::string SafeGetString(const YAML::Node& node,

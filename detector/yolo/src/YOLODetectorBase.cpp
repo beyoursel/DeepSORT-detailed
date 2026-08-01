@@ -8,20 +8,20 @@
 namespace detector {
 
 void YOLODetectorBase::Init() {
-  const DetectorConfig& cfg = AppConfig::GetInstance()->detector;
+  const DetectorConfig& cfg = AppConfig::GetInstance().detector;
 
   confidence_threshold_ = cfg.confidence_threshold;
   nms_threshold_ = cfg.nms_threshold;
   model_input_width_ = cfg.input_width;
   model_input_height_ = cfg.input_height;
-  classes_path_ = AppConfig::GetInstance()->dataset.coco_labels;
+  classes_path_ = AppConfig::GetInstance().dataset.coco_labels;
 
   LoadClasses();
 
   backend::BackendConfig backend_cfg;
   backend_cfg.type = cfg.backend;
   backend_cfg.model_path = cfg.model_path;
-  backend_cfg.device_id = AppConfig::GetInstance()->backend.device_id;
+  backend_cfg.device_id = AppConfig::GetInstance().backend.device_id;
 
   backend_ = backend::BackendFactory::Create(backend_cfg);
   if (!backend_->LoadModel(backend_cfg.model_path)) {

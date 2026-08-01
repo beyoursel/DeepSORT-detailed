@@ -25,7 +25,7 @@ std::vector<TrackResult> DeepSORTAdapter::Update(
   std::vector<TrackResult> out;
   // May throw on ReID model load failure (first call); let the caller handle
   // it.
-  if (!FeatureTensor::GetInstance()->GetRectsFeature(frame, detections)) {
+  if (!FeatureTensor::GetInstance().GetRectsFeature(frame, detections)) {
     return out;
   }
 

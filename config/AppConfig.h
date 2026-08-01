@@ -59,7 +59,7 @@ struct TrackerConfig {
 
 class AppConfig {
  public:
-  static AppConfig* GetInstance();
+  static AppConfig& GetInstance();
 
   bool Load(const std::string& yaml_path);
 
@@ -76,6 +76,4 @@ class AppConfig {
   AppConfig() = default;
   AppConfig(const AppConfig&) = delete;
   AppConfig& operator=(const AppConfig&) = delete;
-
-  static AppConfig* instance_;
 };

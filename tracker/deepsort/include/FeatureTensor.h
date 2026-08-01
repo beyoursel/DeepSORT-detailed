@@ -48,7 +48,7 @@ std::ostream& operator<<(std::ostream& os, const std::vector<T>& v) {
 
 class FeatureTensor {
  public:
-  static FeatureTensor* GetInstance();
+  static FeatureTensor& GetInstance();
   bool GetRectsFeature(const cv::Mat& img, DETECTIONS& d);
   void Preprocess(cv::Mat& imageBGR, std::vector<float>& inputTensorValues,
                   size_t& inputTensorSize);
@@ -57,7 +57,6 @@ class FeatureTensor {
   FeatureTensor();
   FeatureTensor(const FeatureTensor&);
   FeatureTensor& operator=(const FeatureTensor&);
-  static FeatureTensor* instance_;
   bool Init();
   ~FeatureTensor();
 

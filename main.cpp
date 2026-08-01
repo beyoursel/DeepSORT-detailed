@@ -95,8 +95,8 @@ static bool ProcessFrame(cv::Mat& frame,
 static int RunCaptureLoop(cv::VideoCapture& capture,
                           const std::shared_ptr<detector::IDetector>& detector,
                           const std::unique_ptr<tracking::ITracker>& tracker,
-                          const AppConfig* cfg, std::ostream* mot_out) {
-  const auto& output_cfg = cfg->output;
+                          const AppConfig& cfg, std::ostream* mot_out) {
+  const auto& output_cfg = cfg.output;
 
   // Use input source's native size and fps for output to avoid resolution
   // mismatch; fall back to configured values when the backend reports none
@@ -141,7 +141,7 @@ static int RunCaptureLoop(cv::VideoCapture& capture,
     }
 
     if (output_cfg.show) {
-      std::string window_title = "Detector: " + cfg->detector.type;
+      std::string window_title = "Detector: " + cfg.detector.type;
       cv::imshow(window_title, frame);
       if (cv::waitKey(30) == 27) {
         break;
@@ -180,15 +180,15 @@ int main(int argc, char* argv[]) {
     config_path = argv[1];
   }
 
-  AppConfig* cfg = AppConfig::GetInstance();
-  if (!cfg->Load(config_path)) {
+  AppConfig& cfg = AppConfig::GetInstance();
+  if (!cfg.Load(config_path)) {
     std::cerr << "Failed to load config from " << config_path << std::endl;
     return -1;
   }
 
   std::unique_ptr<tracking::ITracker> tracker;
   try {
-    tracker = tracking::TrackerFactory::Create(cfg->tracker.type);
+    tracker = tracking::TrackerFactory::Create(cfg.tracker.type);
   } catch (const std::exception& e) {
     std::cerr << "Failed to create tracker: " << e.what() << std::endl;
     return -1;
@@ -196,15 +196,15 @@ int main(int argc, char* argv[]) {
 
   std::shared_ptr<detector::IDetector> detector;
   try {
-    detector = detector::DetectorFactory::Create(cfg->detector.type);
+    detector = detector::DetectorFactory::Create(cfg.detector.type);
     detector->Init();
   } catch (const std::exception& e) {
     std::cerr << "Failed to initialize detector: " << e.what() << std::endl;
     return -1;
   }
 
-  const auto& input_cfg = cfg->input;
-  const auto& output_cfg = cfg->output;
+  const auto& input_cfg = cfg.input;
+  const auto& output_cfg = cfg.output;
 
   // MOT-format track result output (optional).
   std::ofstream mot_file;
@@ -235,7 +235,7 @@ int main(int argc, char* argv[]) {
       cv::imwrite(output_cfg.image, frame);
     }
     if (output_cfg.show) {
-      std::string window_title = "Detector: " + cfg->detector.type;
+      std::string window_title = "Detector: " + cfg.detector.type;
       cv::imshow(window_title, frame);
       cv::waitKey(0);
       cv::destroyAllWindows();

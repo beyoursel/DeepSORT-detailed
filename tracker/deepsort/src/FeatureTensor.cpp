@@ -10,17 +10,13 @@
 #include "Timer.h"
 #include <iostream>
 
-FeatureTensor* FeatureTensor::instance_ = NULL;
-
-FeatureTensor* FeatureTensor::GetInstance() {
-  if (instance_ == NULL) {
-    instance_ = new FeatureTensor();
-  }
-  return instance_;
+FeatureTensor& FeatureTensor::GetInstance() {
+  static FeatureTensor instance;  // thread-safe since C++11
+  return instance;
 }
 
 FeatureTensor::FeatureTensor() {
-  const DeepSORTConfig& cfg = AppConfig::GetInstance()->deepsort;
+  const DeepSORTConfig& cfg = AppConfig::GetInstance().deepsort;
 
   results_.resize(cfg.feature_dim);
   output_shape_ = {1, cfg.feature_dim};
@@ -28,7 +24,7 @@ FeatureTensor::FeatureTensor() {
   backend::BackendConfig backend_cfg;
   backend_cfg.type = cfg.backend;
   backend_cfg.model_path = cfg.feature_model_path;
-  backend_cfg.device_id = AppConfig::GetInstance()->backend.device_id;
+  backend_cfg.device_id = AppConfig::GetInstance().backend.device_id;
 
   backend_ = backend::BackendFactory::Create(backend_cfg);
   if (!backend_->LoadModel(backend_cfg.model_path)) {

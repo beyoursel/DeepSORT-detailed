@@ -2,12 +2,11 @@
 #include "hungarianoper.h"
 #include <map>
 
-LinearAssignment* LinearAssignment::instance_ = NULL;
 LinearAssignment::LinearAssignment() {}
 
-LinearAssignment* LinearAssignment::GetInstance() {
-  if (instance_ == NULL) instance_ = new LinearAssignment();
-  return instance_;
+LinearAssignment& LinearAssignment::GetInstance() {
+  static LinearAssignment instance;  // thread-safe since C++11
+  return instance;
 }
 
 TRACHER_MATCHD
