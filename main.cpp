@@ -85,8 +85,10 @@ static bool ProcessFrame(cv::Mat& frame,
               << " track_total=" << track_time << "ms" << std::endl;
   } catch (const std::exception& e) {
     std::cerr << "[ERROR] frame=" << frame_id << ": " << e.what() << std::endl;
+    TimingLogger::GetInstance().EndFrame();
     return false;
   }
+  TimingLogger::GetInstance().EndFrame();
   return true;
 }
 
@@ -184,6 +186,10 @@ int main(int argc, char* argv[]) {
   if (!cfg.Load(config_path)) {
     std::cerr << "Failed to load config from " << config_path << std::endl;
     return -1;
+  }
+
+  if (!cfg.output.timing.empty()) {
+    TimingLogger::GetInstance().Open(cfg.output.timing);
   }
 
   std::unique_ptr<tracking::ITracker> tracker;

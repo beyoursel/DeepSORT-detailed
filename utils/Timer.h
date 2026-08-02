@@ -4,6 +4,8 @@
 #include <iostream>
 #include <string>
 
+#include "TimingLogger.h"
+
 class ScopedTimer {
  public:
   explicit ScopedTimer(const std::string& name)
@@ -13,8 +15,10 @@ class ScopedTimer {
     auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>(
                           std::chrono::steady_clock::now() - start_)
                           .count();
-    std::cout << "[TIME] " << name_ << ": " << (elapsed_us / 1000.0) << " ms"
+    double elapsed_ms = elapsed_us / 1000.0;
+    std::cout << "[TIME] " << name_ << ": " << elapsed_ms << " ms"
               << std::endl;
+    TimingLogger::GetInstance().Record(name_, elapsed_ms);
   }
 
  private:

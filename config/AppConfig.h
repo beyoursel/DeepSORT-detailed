@@ -47,6 +47,7 @@ struct OutputConfig {
   int height;
   bool show = true;  // real-time preview window; set false on headless servers
   std::string result;  // MOT-format track output file; empty = disabled
+  std::string timing;  // per-frame stage timing CSV; empty = disabled
 };
 
 struct DatasetConfig {

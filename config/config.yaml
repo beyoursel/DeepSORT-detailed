@@ -24,6 +24,7 @@ output:
   height: 1080  # fallback height：输入源高度取不到时用
   show: true    # 实时预览窗口；服务器/容器等无显示环境设为 false
   result: ""    # MOT 格式跟踪结果输出文件（如 results.txt），留空则不输出
+  timing: "timing.csv"    # 每帧分阶段耗时 CSV 输出（如 timing.csv），留空则不输出；配合 scripts/plot_timing.py 分析
 
 # 检测器配置
 detector:

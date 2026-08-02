@@ -156,6 +156,7 @@ output:
   height: 1080
   show: true        # 实时预览窗口；无显示环境设为 false
   result: ""        # MOT 格式结果文件，留空不输出
+  timing: ""        # 每帧分阶段耗时 CSV，留空不输出
 
 # 检测器配置
 detector:
@@ -232,6 +233,24 @@ output:
 ```
 
 `result` 文件每行对应一个已确认的跟踪框，可直接交给下游系统或用于跟踪指标评测。
+
+### 5.5 耗时统计与箱线图分析
+
+设置 `output.timing` 后，程序每帧将 `det_pre / det_infer / det_post / reid / track` 各阶段耗时写入 CSV（每行一帧）：
+
+```yaml
+output:
+  timing: "timing.csv"   # 留空 "" 则不输出
+```
+
+跑完后用 `scripts/plot_timing.py` 做分布分析（只依赖 numpy + matplotlib）：
+
+```bash
+python3 scripts/plot_timing.py --input timing.csv --skip 3 --output timing_boxplot.png
+```
+
+- `--skip N`：丢弃前 N 帧预热数据（GPU 首帧有 CUDA 初始化开销，见第 7 节）。
+- 终端打印各阶段 mean / std / median / p95 / max 及整帧 FPS；箱线图含各阶段与整帧 total 的分布对比。
 
 ---
 

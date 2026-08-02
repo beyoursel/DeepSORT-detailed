@@ -60,6 +60,8 @@ bool AppConfig::Load(const std::string& yaml_path) {
       output.show = GetWithDefault(config["output"], "show", true);
       output.result =
           GetWithDefault(config["output"], "result", std::string(""));
+      output.timing =
+          GetWithDefault(config["output"], "timing", std::string(""));
     }
 
     // global backend
