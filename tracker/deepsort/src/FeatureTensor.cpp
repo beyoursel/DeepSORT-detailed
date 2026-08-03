@@ -25,6 +25,7 @@ FeatureTensor::FeatureTensor() {
   backend_cfg.type = cfg.backend;
   backend_cfg.model_path = cfg.feature_model_path;
   backend_cfg.device_id = AppConfig::GetInstance().backend.device_id;
+  backend_cfg.fp16 = AppConfig::GetInstance().backend.fp16;
 
   backend_ = backend::BackendFactory::Create(backend_cfg);
   if (!backend_->LoadModel(backend_cfg.model_path)) {

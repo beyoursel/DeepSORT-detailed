@@ -58,6 +58,31 @@ set(BACKEND_SOURCES
     backend/src/ONNXRuntimeBackend.cpp
 )
 
+# TensorRT backend (optional): -DUSE_TENSORRT=ON
+option(USE_TENSORRT "Enable TensorRT backend" OFF)
+set(TENSORRT_DIR "/media/taole/mydisk/TensorRT-8.5.1.7" CACHE PATH "TensorRT install dir")
+set(TENSORRT_LIBS "")
+if(USE_TENSORRT)
+    message(STATUS "Using TensorRT: ${TENSORRT_DIR}")
+    # CMake 3.16 has no FindCUDAToolkit (needs 3.17+); locate cudart manually.
+    set(CUDA_TOOLKIT_ROOT_DIR "/usr/local/cuda-11.8" CACHE PATH "CUDA toolkit dir")
+    find_library(CUDART_LIBRARY cudart
+        PATHS "${CUDA_TOOLKIT_ROOT_DIR}/lib64" "${CUDA_TOOLKIT_ROOT_DIR}/lib"
+        REQUIRED)
+    include_directories("${CUDA_TOOLKIT_ROOT_DIR}/include")
+    # SYSTEM: TRT 8.5 headers use deprecated APIs internally; treat them as
+    # system headers so their warnings don't drown out ours.
+    include_directories(SYSTEM "${TENSORRT_DIR}/include")
+    link_directories("${TENSORRT_DIR}/lib")
+    list(APPEND BACKEND_SOURCES backend/src/TensorRTBackend.cpp)
+    # TRT 8.5 deprecates the binding-based API (enqueueV3 tensor API is the
+    # replacement); silence it only for this file since we pin to 8.5.
+    set_source_files_properties(backend/src/TensorRTBackend.cpp
+        PROPERTIES COMPILE_OPTIONS "-Wno-deprecated-declarations")
+    add_compile_definitions(USE_TENSORRT)
+    set(TENSORRT_LIBS nvinfer nvonnxparser ${CUDART_LIBRARY})
+endif()
+
 add_executable(YoloTracker
     config/AppConfig.cpp
 
@@ -96,13 +121,19 @@ target_link_libraries(YoloTracker PRIVATE
     onnxruntime
     ${OpenCV_LIBS}
     Eigen3::Eigen
-    yaml-cpp)
+    yaml-cpp
+    ${TENSORRT_LIBS})
 
 # Set RPATH so the executable finds libonnxruntime.so and its provider libraries at runtime.
 # Use $ORIGIN relative paths so the project is relocatable.
+if(USE_TENSORRT)
+    set(EXTRA_RPATH ";${TENSORRT_DIR}/lib")
+else()
+    set(EXTRA_RPATH "")
+endif()
 set_target_properties(YoloTracker PROPERTIES
-    BUILD_RPATH "${ONNXRUNTIME_RPATH}"
-    INSTALL_RPATH "${ONNXRUNTIME_RPATH}"
+    BUILD_RPATH "${ONNXRUNTIME_RPATH}${EXTRA_RPATH}"
+    INSTALL_RPATH "${ONNXRUNTIME_RPATH}${EXTRA_RPATH}"
 )
 
 
@@ -124,9 +155,10 @@ target_link_libraries(test_detector PRIVATE
     onnxruntime
     ${OpenCV_LIBS}
     Eigen3::Eigen
-    yaml-cpp)
+    yaml-cpp
+    ${TENSORRT_LIBS})
 
 set_target_properties(test_detector PROPERTIES
-    BUILD_RPATH "${ONNXRUNTIME_RPATH}"
-    INSTALL_RPATH "${ONNXRUNTIME_RPATH}"
+    BUILD_RPATH "${ONNXRUNTIME_RPATH}${EXTRA_RPATH}"
+    INSTALL_RPATH "${ONNXRUNTIME_RPATH}${EXTRA_RPATH}"
 )

@@ -7,7 +7,7 @@
 ## 1. 特性
 
 - **配置驱动**：模型路径、输入源、推理后端、跟踪算法参数全部通过 `config/config.yaml` 配置，无需改代码即可切换。
-- **多后端支持**：ONNXRuntime CPU / GPU 可切换，且支持“全局默认 + 模块独立覆盖”。
+- **多后端支持**：ONNXRuntime CPU / GPU / TensorRT 可切换，且支持“全局默认 + 模块独立覆盖”。
 - **多检测网络**：已接入 YOLOv5 / YOLOv8 / YOLOv26（YOLOv9 / v10 / v11 复用 YOLOv8 后处理），可按 `DetectorFactory` 继续扩展。
 - **多跟踪器**：DeepSORT / ByteTrack 一键切换，统一 `ITracker` 接口，可按 `TrackerFactory` 扩展。
 - **可视化**：同时显示绿色检测框（类别 + 置信度）和红色跟踪框（跟踪 ID）。
@@ -62,6 +62,7 @@
 - Eigen3
 - yaml-cpp
 - ONNXRuntime（已放在 `lib/` 下，无需编译）
+- TensorRT 8.5（可选，仅使用 `tensorrt` 后端时需要，配 CUDA 11.8 + cuDNN 8.6）
 
 安装 OpenCV 依赖和 yaml-cpp：
 
@@ -193,11 +194,18 @@ bytetrack:
 
 ### 5.1 后端切换
 
-- 全局 `backend.type` 是默认值。
+- 全局 `backend.type` 是默认值：`onnxruntime_cpu | onnxruntime_gpu | tensorrt`。
 - `detector.backend` / `deepsort.backend` 可单独覆盖，用于异构部署。例如：
   - 检测器跑 GPU，`backend.type = onnxruntime_gpu`。
   - ReID 跑 CPU，`deepsort.backend = onnxruntime_cpu`。
 - 不写子模块的 `backend`，则默认继承全局设置。
+
+#### TensorRT 后端
+
+- 需编译时开启：`cmake .. -DUSE_TENSORRT=ON`（`TENSORRT_DIR` 默认指向本机 `TensorRT-8.5.1.7`，可用 `-DTENSORRT_DIR=...` 覆盖）。
+- 首次加载模型时会从 ONNX 构建 engine（约 10~60s，一次性），缓存到 `模型路径.fp16.engine`（或 `.fp32.engine`），之后启动直接加载缓存，秒级完成。
+- Engine 与 GPU 架构、TensorRT 版本绑定；升级 TRT 或换 GPU 后删除 `*.engine` 重建。
+- `backend.fp16`（默认 `true`）控制 FP16 计算精度，网络输入输出仍为 FP32，业务代码无感；参考 `config/test_tensorrt.yaml`。
 
 ### 5.2 跟踪器切换
 
@@ -369,7 +377,7 @@ python3 scripts/extract_frame.py \
 2. 在 `DetectorFactory::create()` 中注册新类型。
 3. 在 `config.yaml` 中设置 `detector.type` 即可切换。
 
-后端通过 `BackendFactory` 创建，新增推理框架（如 TensorRT、OpenVINO）只需实现 `IBackend` 接口并注册。
+后端通过 `BackendFactory` 创建，已实现 `onnxruntime_cpu / onnxruntime_gpu / tensorrt`；新增推理框架（如 OpenVINO）只需实现 `IBackend` 接口并注册。
 
 跟踪器通过 `TrackerFactory` 创建，新增跟踪算法（如 OC-SORT、BoT-SORT）只需：
 

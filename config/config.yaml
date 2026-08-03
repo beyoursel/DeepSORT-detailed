@@ -2,8 +2,9 @@
 
 # 推理后端配置（全局默认，可被 detector.backend / deepsort.backend 单独覆盖）
 backend:
-  type: "onnxruntime_gpu"   # onnxruntime_cpu | onnxruntime_gpu（GPU 库也含 CPU EP）
+  type: "tensorrt"   # onnxruntime_cpu | onnxruntime_gpu | tensorrt
   device_id: 0              # GPU 设备号，仅 GPU 后端有效
+  fp16: true                # tensorrt 专用：FP16 计算（I/O 仍为 FP32），其他后端忽略
 
 # 类别标签文件路径（COCO 80 类，每行一个类别名，用于画框标签）
 dataset:
@@ -28,9 +29,9 @@ output:
 
 # 检测器配置
 detector:
-  type: "yolov26"           # yolov5 | yolov8（兼容 v9~v11，输出格式相同）| yolov26
-  backend: "onnxruntime_gpu" # 可选，覆盖全局 backend.type；不写则继承全局
-  model_path: "./models/yolo26s.onnx" # 检测模型 ONNX 路径
+  type: "yolov8"           # yolov5 | yolov8（兼容 v9~v11，输出格式相同）| yolov26
+  backend: "tensorrt" # 可选，覆盖全局 backend.type；不写则继承全局
+  model_path: "./models/yolov8s.onnx" # 检测模型 ONNX 路径
   input_width: 640          # 模型输入宽度（letterbox 缩放目标）
   input_height: 640         # 模型输入高度
   confidence_threshold: 0.25 # 检测置信度阈值，低于则丢弃；漏检多可降到 0.15~0.2
@@ -43,7 +44,7 @@ tracker:
 # DeepSORT 配置
 deepsort:
   feature_model_path: "./models/feature.onnx" # ReID 外观特征模型 ONNX 路径
-  backend: "onnxruntime_gpu" # 可选，覆盖全局 backend.type；不写则继承全局
+  backend: "tensorrt" # 可选，覆盖全局 backend.type；不写则继承全局
   feature_dim: 512           # 特征维度，必须与模型输出一致
   max_cosine_distance: 0.2   # 外观匹配余弦距离门限：调小→ID switch 减少但易断轨；调大→相反
   nn_budget: 100             # 每条轨迹保留的外观特征样本数上限（滑动窗口）

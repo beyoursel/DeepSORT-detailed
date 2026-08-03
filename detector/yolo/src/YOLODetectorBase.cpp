@@ -22,6 +22,7 @@ void YOLODetectorBase::Init() {
   backend_cfg.type = cfg.backend;
   backend_cfg.model_path = cfg.model_path;
   backend_cfg.device_id = AppConfig::GetInstance().backend.device_id;
+  backend_cfg.fp16 = AppConfig::GetInstance().backend.fp16;
 
   backend_ = backend::BackendFactory::Create(backend_cfg);
   if (!backend_->LoadModel(backend_cfg.model_path)) {
@@ -54,7 +55,7 @@ std::vector<float> YOLODetectorBase::Preprocess(const cv::Mat& letterboxed) {
   cv::Mat blob;
   cv::dnn::blobFromImage(letterboxed, blob, 1.0 / 255.0,
                          cv::Size(model_input_width_, model_input_height_),
-                         cv::Scalar(0, 0, 0), true, false);
+                         cv::Scalar(0, 0, 0), true, false); // true means swapRB to get RGB
   return std::vector<float>(blob.begin<float>(), blob.end<float>());
 }
 

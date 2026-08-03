@@ -2,3 +2,5 @@ build/
 lib/
 models/
 *.avi
+*.engine
+*.csv

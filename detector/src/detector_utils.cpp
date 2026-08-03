@@ -15,14 +15,14 @@ cv::Mat Letterbox(const cv::Mat& src, int target_width, int target_height,
   int new_h = static_cast<int>(src_h * scale);
 
   cv::Mat resized;
-  cv::resize(src, resized, cv::Size(new_w, new_h), 0, 0, cv::INTER_LINEAR);
+  cv::resize(src, resized, cv::Size(new_w, new_h), 0, 0, cv::INTER_LINEAR); // INTER_LINEAR Resize
 
   cv::Mat dst =
       cv::Mat::zeros(cv::Size(target_width, target_height), src.type());
   int pad_x = (target_width - new_w) / 2;
   int pad_y = (target_height - new_h) / 2;
   cv::Rect roi(pad_x, pad_y, new_w, new_h);
-  resized.copyTo(dst(roi));
+  resized.copyTo(dst(roi)); // copy the resized img to the roi in dst
 
   scale_info.x_factor = static_cast<float>(src_w) / new_w;
   scale_info.y_factor = static_cast<float>(src_h) / new_h;

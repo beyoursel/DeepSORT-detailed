@@ -69,6 +69,7 @@ bool AppConfig::Load(const std::string& yaml_path) {
       backend.type = GetWithDefault(config["backend"], "type",
                                     std::string("onnxruntime_cpu"));
       backend.device_id = GetWithDefault(config["backend"], "device_id", 0);
+      backend.fp16 = GetWithDefault(config["backend"], "fp16", true);
     }
 
     // detector
