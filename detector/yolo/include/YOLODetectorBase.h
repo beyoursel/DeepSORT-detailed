@@ -36,6 +36,14 @@ class YOLODetectorBase : public IDetector {
   // export); the base class then skips the extra NmsFilter pass.
   virtual bool HasBuiltinNms() const { return false; }
 
+  // Pick which model output to parse when the backend reports several
+  // (e.g. YOLOv5's ONNX also exposes the three raw detection heads, and
+  // TensorRT binding order does not follow the ONNX output order).
+  virtual std::string SelectOutputName(
+      const std::vector<std::string>& names) const {
+    return names.front();
+  }
+
   std::shared_ptr<backend::IBackend> backend_;
   std::vector<std::string> classes_;
 

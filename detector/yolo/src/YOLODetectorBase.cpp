@@ -35,7 +35,7 @@ void YOLODetectorBase::Init() {
         "YOLO detector init failed: model has no input/output nodes");
   }
   input_name_ = backend_->GetInputNames().front();
-  output_name_ = backend_->GetOutputNames().front();
+  output_name_ = SelectOutputName(backend_->GetOutputNames());
 }
 
 void YOLODetectorBase::LoadClasses() {

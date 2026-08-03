@@ -270,14 +270,22 @@ bool TensorRTBackend::Run(const std::string& input_name,
     return false;
   }
 
+  // enqueueV2 requires a non-null device pointer in EVERY binding slot,
+  // including outputs we never read back (e.g. YOLOv5's extra heads).
+  const int nb_bindings = engine_->getNbBindings();
+  for (int b = 0; b < nb_bindings; ++b) {
+    const nvinfer1::Dims dims =
+        (b == in_idx) ? ToDims(input_shape)
+                      : context_->getBindingDimensions(b);
+    if (!EnsureDeviceBuffer(b, Volume(dims) * sizeof(float))) return false;
+  }
+
   const size_t in_bytes = input_data.size() * sizeof(float);
-  if (!EnsureDeviceBuffer(in_idx, in_bytes)) return false;
   cudaMemcpyAsync(device_buffers_[in_idx], input_data.data(), in_bytes,
                   cudaMemcpyHostToDevice, stream_);
 
   const nvinfer1::Dims out_dims = context_->getBindingDimensions(out_idx);
   const size_t out_size = Volume(out_dims);
-  if (!EnsureDeviceBuffer(out_idx, out_size * sizeof(float))) return false;
 
   if (!context_->enqueueV2(device_buffers_.data(), stream_, nullptr)) {
     std::cerr << "TensorRT enqueueV2 failed" << std::endl;
