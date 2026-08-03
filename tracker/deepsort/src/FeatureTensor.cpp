@@ -43,16 +43,23 @@ FeatureTensor::FeatureTensor() {
 FeatureTensor::~FeatureTensor() {}
 
 bool FeatureTensor::Init() {
-  // Query input shape from backend by running a dummy inference.
-  std::vector<float> dummy_input(width_ * height_ * 3, 0.0f);
-  std::vector<float> dummy_output;
-  std::vector<int64_t> output_shape;
+  // Warm up every batch bucket with a dummy inference. cuDNN runs a one-time
+  // (~300 ms) algorithm search for each new input shape, so GetRectsFeature
+  // pads the batch to the next power of two and we pre-pay that search here
+  // instead of stalling mid-video whenever the crowd size reaches a new max.
+  for (int64_t batch : {1, 2, 4, 8, 16, 32, 64}) {
+    std::vector<int64_t> shape = input_shape_;
+    shape[0] = batch;
+    std::vector<float> dummy_input(batch * width_ * height_ * 3, 0.0f);
+    std::vector<float> dummy_output;
+    std::vector<int64_t> output_shape;
 
-  if (!backend_->Run("input", dummy_input, input_shape_, "output", dummy_output,
-                     output_shape)) {
-    std::cerr << "FeatureTensor Init failed: dummy inference failed"
-              << std::endl;
-    return false;
+    if (!backend_->Run("input", dummy_input, shape, "output", dummy_output,
+                       output_shape)) {
+      std::cerr << "FeatureTensor Init failed: dummy inference failed"
+                << std::endl;
+      return false;
+    }
   }
 
   inputDims_ = input_shape_;
@@ -110,8 +117,27 @@ void FeatureTensor::Preprocess(cv::Mat& imageBGR,
                            preprocessedImage.end<float>());
 }
 
+namespace {
+// Round up to the next power of two: batch sizes are bucketed so cuDNN only
+// ever sees the shapes warmed up in FeatureTensor::Init().
+size_t NextPow2(size_t n) {
+  size_t p = 1;
+  while (p < n) p <<= 1;
+  return p;
+}
+}  // namespace
+
 bool FeatureTensor::GetRectsFeature(const cv::Mat& img, DETECTIONS& d) {
   ScopedTimer timer("reid");
+
+  if (d.empty()) return true;
+
+  // Batched inference: preprocess every detection crop with the exact same
+  // per-crop pipeline as before (INTER_CUBIC resize + ImageNet mean/std),
+  // concatenate into one (N, 3, 128, 64) tensor and call Run() once.
+  const size_t per_crop_size = VectorProduct(inputDims_);
+  std::vector<float> batch_input;
+  batch_input.reserve(d.size() * per_crop_size);
 
   for (DETECTION_ROW& dbox : d) {
     cv::Rect rc = cv::Rect(int(dbox.tlwh(0)), int(dbox.tlwh(1)),
@@ -128,16 +154,31 @@ bool FeatureTensor::GetRectsFeature(const cv::Mat& img, DETECTIONS& d) {
     std::vector<float> inputTensorValues;
     size_t inputTensorSize;
     Preprocess(mattmp, inputTensorValues, inputTensorSize);
+    batch_input.insert(batch_input.end(), inputTensorValues.begin(),
+                       inputTensorValues.end());
+  }
 
-    if (!backend_->Run("input", inputTensorValues, inputDims_, "output",
-                       results_, output_shape_)) {
-      std::cerr << "FeatureTensor inference failed" << std::endl;
-      return false;
-    }
+  // Pad with zero rows up to the bucket size; padded rows produce garbage
+  // features that are simply not read back below.
+  const size_t batch_size = d.size();
+  const size_t padded_size = NextPow2(batch_size);
+  batch_input.resize(padded_size * per_crop_size, 0.0f);
 
-    dbox.feature.resize(1, output_shape_[1]);
-    for (int i = 0; i < output_shape_[1]; i++) {
-      dbox.feature[i] = results_[i];
+  std::vector<int64_t> batch_input_shape = inputDims_;
+  batch_input_shape[0] = static_cast<int64_t>(padded_size);
+  std::vector<float> batch_output;
+  std::vector<int64_t> batch_output_shape;
+  if (!backend_->Run("input", batch_input, batch_input_shape, "output",
+                     batch_output, batch_output_shape)) {
+    std::cerr << "FeatureTensor inference failed" << std::endl;
+    return false;
+  }
+
+  const int64_t feature_dim = batch_output_shape[1];
+  for (size_t i = 0; i < batch_size; i++) {
+    d[i].feature.resize(1, feature_dim);
+    for (int64_t j = 0; j < feature_dim; j++) {
+      d[i].feature[j] = batch_output[i * feature_dim + j];
     }
   }
 
