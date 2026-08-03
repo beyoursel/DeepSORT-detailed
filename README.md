@@ -111,6 +111,9 @@ make -j$(nproc)
 # CPU 后端（使用更小的 CPU 专用库）
 # cmake .. -DUSE_ONNXRUNTIME_GPU=OFF
 # make -j$(nproc)
+
+# 可选：启用 TensorRT 后端（详见 5.1 节）
+# cmake .. -DUSE_TENSORRT=ON -DTENSORRT_DIR=<TensorRT 安装路径>
 ```
 
 编译产物：
@@ -202,10 +205,10 @@ bytetrack:
 
 #### TensorRT 后端
 
-- 需编译时开启：`cmake .. -DUSE_TENSORRT=ON`（`TENSORRT_DIR` 默认指向本机 `TensorRT-8.5.1.7`，可用 `-DTENSORRT_DIR=...` 覆盖）。
-- 首次加载模型时会从 ONNX 构建 engine（约 10~60s，一次性），缓存到 `模型路径.fp16.engine`（或 `.fp32.engine`），之后启动直接加载缓存，秒级完成。
-- Engine 与 GPU 架构、TensorRT 版本绑定；升级 TRT 或换 GPU 后删除 `*.engine` 重建。
-- `backend.fp16`（默认 `true`）控制 FP16 计算精度，网络输入输出仍为 FP32，业务代码无感；参考 `config/test_tensorrt.yaml`。
+- **编译**：`cmake .. -DUSE_TENSORRT=ON`（`compile.sh` 已默认带上；`TENSORRT_DIR` 指向 TensorRT 8.5 安装路径，可用 `-DTENSORRT_DIR=...` 覆盖）。与 ONNXRuntime 后端共存，yaml 里按模块选择。
+- **使用**：`backend.type: "tensorrt"`，`backend.fp16` 默认开启（I/O 仍为 FP32，业务无感），完整示例见 `config/test_tensorrt.yaml`。
+- **Engine 缓存**：首次加载模型时构建 engine（一次性，几秒~几分钟），缓存为 `模型路径.fp16.engine`，之后秒级启动；升级 TRT 或换 GPU 后删除 `*.engine` 重建。
+- **性能**：实测约为 ONNXRuntime GPU 的 2.8 倍（见第 7 节表格）；YOLOv5 等多输出模型已兼容，新多输出模型重写 `SelectOutputName()` 钩子即可接入。
 
 ### 5.2 跟踪器切换
 
@@ -271,6 +274,8 @@ cd YOLO-Tracker   # 项目根目录
 ./build/YoloTracker
 # 或指定其他配置文件
 ./build/YoloTracker ./config/test_deepsort.yaml
+# TensorRT 后端（DeepSORT + FP16）
+./build/YoloTracker ./config/test_tensorrt.yaml
 ```
 
 输入模式由 `input.type` 决定：`video`（视频文件）、`image`（单张图片，结果存到 `output.image`）、`camera`（摄像头设备号或 rtsp 流地址，ESC 退出）。参考 `config/test_image.yaml`。
@@ -323,8 +328,11 @@ cd YOLO-Tracker   # 项目根目录
 |---|---|
 | ONNXRuntime CPU | ~300 ms |
 | ONNXRuntime GPU | ~10 ms |
+| TensorRT FP16 | ~2.7 ms |
 
 > 做性能 benchmark 时，建议丢弃前 1~2 帧，从第 3 帧开始统计。
+>
+> TensorRT 后端的"首次成本"不是预热而是 **engine 构建**（见 5.1 节），有缓存后启动即稳定；配合 `output.timing` 输出 CSV 和 `scripts/plot_timing.py` 可复现上表数据。
 
 ---
 
