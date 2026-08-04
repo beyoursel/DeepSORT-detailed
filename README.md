@@ -2,6 +2,12 @@
 
 基于 C++ 的多目标跟踪项目，检测器支持 **YOLOv5 / YOLOv8 / YOLOv26 ONNX**，跟踪器支持 **DeepSORT / ByteTrack**，推理后端通过统一的 `IBackend` 抽象支持 **ONNXRuntime CPU / GPU / TensorRT** 切换。检测器（`IDetector`）与跟踪器（`ITracker`）均为接口 + 工厂模式，可按需扩展。
 
+## 演示效果
+
+![tracking demo](assets/tracking_demo.gif)
+
+> 红色框为跟踪框（含跟踪 ID），绿色框为检测框（类别 + 置信度）。完整输出见项目根目录的 `out.avi`。
+
 ---
 
 ## 1. 特性
