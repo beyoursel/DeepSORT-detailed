@@ -12,7 +12,7 @@ dataset:
 
 # 输入源
 input:
-  source: "./test_video.avi" # video/image: 文件路径；camera: 设备号 "0" 或流地址 "rtsp://..."
+  source: "test_data/test_video.mp4" # video/image: 文件路径；camera: 设备号 "0" 或流地址 "rtsp://..."
   type: "video"  # video | image | camera
 
 # 输出配置

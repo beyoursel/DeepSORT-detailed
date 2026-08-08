@@ -4,7 +4,8 @@
 
 ## 演示效果
 
-![tracking demo](assets/tracking_demo.gif)
+![tracking demo 1](assets/tracking_demo_1.gif)
+![tracking demo 2](assets/tracking_demo_2.gif)
 
 > 红色框为跟踪框（含跟踪 ID），绿色框为检测框（类别 + 置信度）。
 
